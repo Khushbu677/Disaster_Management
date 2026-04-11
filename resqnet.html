@@ -1,0 +1,1484 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ResQNet — Disaster Management System</title>
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:wght@300;400;500;600&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --red: #E24B4A; --red-dark: #A32D2D; --red-light: #FCEBEB;
+    --amber: #EF9F27; --amber-dark: #854F0B; --amber-light: #FAEEDA;
+    --teal: #1D9E75; --teal-dark: #085041; --teal-light: #E1F5EE;
+    --purple: #7F77DD; --purple-dark: #3C3489;
+    --gray-900: #272C2c; --gray-800: #2a2a2a; --gray-700: #3a3a3a;
+    --gray-600: #555; --gray-400: #888; --gray-200: #e2e2e2; --gray-100: #f5f5f5;
+    --white: #ffffff;
+    --font-display: 'Bebas Neue', sans-serif;
+    --font-body: 'DM Sans', sans-serif;
+    --font-mono: 'Space Mono', monospace;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { font-family: var(--font-body); background: var(--gray-900); color: var(--white); min-height: 100vh; overflow-x: hidden; }
+
+  .page { display: none; min-height: 100vh; animation: fadeIn 0.4s ease; }
+  .page.active { display: flex; flex-direction: column; }
+  @keyframes fadeIn { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: translateY(0); } }
+
+  /* ========== HOME PAGE ========== */
+  #home {
+    position: relative;
+    background: linear-gradient(135deg, #0a0a0a 0%, #1a0a0a 50%, #0a1a1a 100%);
+    align-items: center; justify-content: flex-start; text-align: center;
+    overflow-x: hidden; overflow-y: auto;
+    padding: 48px 0 120px;
+  }
+  .bg-grid {
+    position: absolute; inset: 0;
+    background-image: linear-gradient(rgba(226,75,74,0.06) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(226,75,74,0.06) 1px, transparent 1px);
+    background-size: 60px 60px;
+  }
+  .bg-orb { position: absolute; border-radius: 50%; filter: blur(80px); pointer-events: none; }
+  .orb1 { width: 500px; height: 500px; background: rgba(226,75,74,0.12); top: -100px; left: -100px; }
+  .orb2 { width: 400px; height: 400px; background: rgba(29,158,117,0.1); bottom: -80px; right: -80px; }
+  .orb3 { width: 300px; height: 300px; background: rgba(239,159,39,0.08); top: 50%; left: 50%; transform: translate(-50%,-50%); }
+
+  .rescue-images {
+    position: absolute; inset: 0; display: grid;
+    grid-template-columns: repeat(3, 1fr); grid-template-rows: repeat(2, 1fr);
+    opacity: 0.08; pointer-events: none;
+  }
+  .rescue-img-placeholder { display: flex; align-items: center; justify-content: center; font-size: 80px; border: 1px solid rgba(255,255,255,0.05); }
+
+  .home-content { position: relative; z-index: 2; padding: 2rem; max-width: 800px; width: min(100%, 800px); }
+  .alert-badge {
+    display: inline-flex; align-items: center; gap: 8px;
+    background: rgba(226,75,74,0.15); border: 1px solid rgba(226,75,74,0.4);
+    color: #f09595; padding: 6px 16px; border-radius: 100px;
+    font-size: 11px; font-family: var(--font-mono); letter-spacing: 2px;
+    margin-bottom: 2rem; text-transform: uppercase;
+  }
+  .pulse-dot { width: 8px; height: 8px; background: var(--red); border-radius: 50%; animation: pulse 2s infinite; }
+  @keyframes pulse { 0%,100%{opacity:1;transform:scale(1)} 50%{opacity:0.5;transform:scale(1.3)} }
+
+  .home-title { font-family: var(--font-display); font-size: clamp(60px, 12vw, 130px); line-height: 0.9; letter-spacing: 2px; margin-bottom: 0.5rem; }
+  .home-title span { color: var(--red); }
+  .home-subtitle { font-size: clamp(14px, 2vw, 18px); color: rgba(255,255,255,0.5); letter-spacing: 4px; text-transform: uppercase; font-weight: 300; margin-bottom: 3rem; font-family: var(--font-mono); }
+
+  .role-selector-wrap { position: relative; display: inline-block; width: min(100%, 360px); }
+  .role-btn {
+    display: flex; align-items: center; gap: 12px;
+    background: rgba(226,75,74,0.1); border: 1.5px solid rgba(226,75,74,0.6);
+    color: white; padding: 18px 36px; border-radius: 4px; cursor: pointer;
+    font-family: var(--font-display); font-size: 22px; letter-spacing: 2px;
+    transition: all 0.2s; min-width: 320px; justify-content: space-between;
+  }
+  .role-btn:hover { background: rgba(226,75,74,0.25); border-color: var(--red); }
+  .role-btn .chevron { transition: transform 0.3s; font-size: 14px; }
+  .role-btn.open .chevron { transform: rotate(180deg); }
+
+  .role-dropdown {
+    position: absolute; top: calc(100% + 8px); left: 0; right: 0;
+    background: #1e1e1e; border: 1.5px solid rgba(226,75,74,0.4);
+    border-radius: 4px; overflow-x: hidden; overflow-y: auto; display: none; z-index: 100;
+    box-shadow: 0 20px 60px rgba(0,0,0,0.6);
+    max-height: min(320px, calc(100vh - 220px));
+    overscroll-behavior: contain;
+  }
+  .role-dropdown.open { display: block; animation: dropDown 0.2s ease; }
+  @keyframes dropDown { from{opacity:0;transform:translateY(-8px)} to{opacity:1;transform:translateY(0)} }
+  .role-option {
+    display: flex; align-items: center; gap: 14px; padding: 16px 24px;
+    cursor: pointer; transition: background 0.15s; border-bottom: 1px solid rgba(255,255,255,0.05);
+    font-family: var(--font-display); font-size: 20px; letter-spacing: 2px;
+  }
+  .role-option:last-child { border-bottom: none; }
+  .role-option:hover { background: rgba(226,75,74,0.15); }
+  .role-option .role-icon { font-size: 22px; width: 32px; text-align: center; }
+  .role-option .role-desc { font-size: 11px; color: rgba(255,255,255,0.4); font-family: var(--font-body); letter-spacing: 1px; margin-top: 2px; }
+  .role-quick-grid {
+    display: grid; grid-template-columns: repeat(4, minmax(120px, 1fr)); gap: 12px;
+    margin-top: 18px; width: min(100%, 760px);
+  }
+  .role-quick-card {
+    background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.08);
+    border-radius: 10px; padding: 14px 16px; text-align: left; cursor: pointer;
+    transition: transform 0.2s, border-color 0.2s, background 0.2s;
+  }
+  .role-quick-card:hover { transform: translateY(-2px); background: rgba(226,75,74,0.08); border-color: rgba(226,75,74,0.32); }
+  .role-quick-icon { font-size: 0; margin-bottom: 10px; display: block; }
+  .role-quick-card:nth-child(1) .role-quick-icon::before,
+  .role-quick-card:nth-child(2) .role-quick-icon::before,
+  .role-quick-card:nth-child(3) .role-quick-icon::before,
+  .role-quick-card:nth-child(4) .role-quick-icon::before {
+    font-size: 18px; letter-spacing: 2px; font-family: var(--font-mono);
+  }
+  .role-quick-card:nth-child(1) .role-quick-icon::before { content: 'SOS'; }
+  .role-quick-card:nth-child(2) .role-quick-icon::before { content: 'AID'; }
+  .role-quick-card:nth-child(3) .role-quick-icon::before { content: 'NGO'; }
+  .role-quick-card:nth-child(4) .role-quick-icon::before { content: 'ADM'; }
+  .role-quick-title { font-family: var(--font-display); font-size: 22px; letter-spacing: 1.5px; }
+  .role-quick-desc { font-size: 11px; color: rgba(255,255,255,0.45); margin-top: 4px; line-height: 1.5; }
+
+  .stats-bar {
+    position: absolute; bottom: 0; left: 0; right: 0;
+    display: flex; background: rgba(0,0,0,0.5); backdrop-filter: blur(10px);
+    border-top: 1px solid rgba(255,255,255,0.08);
+  }
+  .stat-item { flex: 1; padding: 16px 24px; text-align: center; border-right: 1px solid rgba(255,255,255,0.08); }
+  .stat-item:last-child { border-right: none; }
+  .stat-num { font-family: var(--font-display); font-size: 28px; color: var(--red); }
+  .stat-label { font-size: 10px; color: rgba(255,255,255,0.4); letter-spacing: 2px; text-transform: uppercase; font-family: var(--font-mono); }
+
+  /* ========== SHARED FORM STYLES ========== */
+  .page-header {
+    background: rgba(0,0,0,0.6); backdrop-filter: blur(20px);
+    border-bottom: 1px solid rgba(255,255,255,0.08);
+    padding: 16px 32px; display: flex; align-items: center; gap: 16px;
+    position: sticky; top: 0; z-index: 50;
+  }
+  .page-header .logo { font-family: var(--font-display); font-size: 22px; color: var(--red); letter-spacing: 2px; }
+  .back-btn {
+    display: flex; align-items: center; gap: 6px;
+    background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1);
+    color: rgba(255,255,255,0.6); padding: 8px 16px; border-radius: 4px;
+    cursor: pointer; font-size: 13px; transition: all 0.2s; margin-left: auto;
+    font-family: var(--font-body);
+  }
+  .back-btn:hover { background: rgba(255,255,255,0.1); color: white; }
+
+  /* Dashboard button in header - for non-victim roles */
+  .dashboard-btn {
+    display: flex; align-items: center; gap: 6px;
+    background: rgba(226,75,74,0.15); border: 1px solid rgba(226,75,74,0.4);
+    color: #f09595; padding: 8px 16px; border-radius: 4px;
+    cursor: pointer; font-size: 13px; transition: all 0.2s;
+    font-family: var(--font-mono); letter-spacing: 1px;
+  }
+  .dashboard-btn:hover { background: rgba(226,75,74,0.3); color: white; }
+  .dashboard-btn.teal { background: rgba(29,158,117,0.15); border-color: rgba(29,158,117,0.4); color: #5DCAA5; }
+  .dashboard-btn.teal:hover { background: rgba(29,158,117,0.3); }
+  .dashboard-btn.amber { background: rgba(239,159,39,0.15); border-color: rgba(239,159,39,0.4); color: #FAC775; }
+  .dashboard-btn.amber:hover { background: rgba(239,159,39,0.3); }
+  .dashboard-btn.purple { background: rgba(127,119,221,0.15); border-color: rgba(127,119,221,0.4); color: #AFA9EC; }
+  .dashboard-btn.purple:hover { background: rgba(127,119,221,0.3); }
+
+  .role-badge {
+    display: inline-flex; align-items: center; gap: 6px;
+    padding: 4px 14px; border-radius: 100px; font-size: 11px;
+    font-family: var(--font-mono); letter-spacing: 1px; text-transform: uppercase;
+  }
+  .badge-victim { background: rgba(226,75,74,0.15); color: #f09595; border: 1px solid rgba(226,75,74,0.3); }
+  .badge-volunteer { background: rgba(29,158,117,0.15); color: #5DCAA5; border: 1px solid rgba(29,158,117,0.3); }
+  .badge-ngo { background: rgba(239,159,39,0.15); color: #FAC775; border: 1px solid rgba(239,159,39,0.3); }
+  .badge-admin { background: rgba(127,119,221,0.15); color: #AFA9EC; border: 1px solid rgba(127,119,221,0.3); }
+
+  .form-container {
+    flex: 1; display: flex; align-items: flex-start; justify-content: center;
+    padding: 40px 20px 80px;
+    background: radial-gradient(ellipse at top, rgba(226,75,74,0.04) 0%, transparent 60%);
+  }
+  .form-card {
+    background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.08);
+    border-radius: 12px; padding: 40px; width: 100%; max-width: 680px;
+    backdrop-filter: blur(10px);
+  }
+  .form-title { font-family: var(--font-display); font-size: 42px; letter-spacing: 2px; margin-bottom: 6px; line-height: 1; }
+  .form-subtitle { color: rgba(255,255,255,0.4); font-size: 13px; margin-bottom: 32px; font-family: var(--font-mono); letter-spacing: 1px; }
+
+  .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+  .form-group { display: flex; flex-direction: column; gap: 6px; }
+  .form-group.span2 { grid-column: span 2; }
+  .form-label { font-size: 11px; letter-spacing: 2px; text-transform: uppercase; color: rgba(255,255,255,0.5); font-family: var(--font-mono); }
+  .form-label .req { color: var(--red); }
+  .form-input, .form-select, .form-textarea {
+    background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1);
+    color: white; padding: 12px 16px; border-radius: 6px; font-family: var(--font-body);
+    font-size: 14px; transition: border-color 0.2s, background 0.2s; width: 100%;
+  }
+  .form-input:focus, .form-select:focus, .form-textarea:focus {
+    outline: none; border-color: rgba(226,75,74,0.6); background: rgba(226,75,74,0.05);
+  }
+  .form-select { cursor: pointer; }
+  .form-select option { background: #1e1e1e; color: white; }
+  .form-textarea { resize: vertical; min-height: 80px; }
+  .form-input::placeholder { color: rgba(255,255,255,0.2); }
+
+  .section-divider {
+    grid-column: span 2; border-top: 1px solid rgba(255,255,255,0.08);
+    padding-top: 16px; margin-top: 8px;
+    font-size: 11px; letter-spacing: 2px; text-transform: uppercase;
+    color: rgba(255,255,255,0.3); font-family: var(--font-mono);
+  }
+
+  .upload-box {
+    border: 2px dashed rgba(255,255,255,0.12); border-radius: 8px;
+    padding: 24px; text-align: center; cursor: pointer; transition: all 0.2s;
+    background: rgba(255,255,255,0.02);
+  }
+  .upload-box:hover { border-color: rgba(226,75,74,0.4); background: rgba(226,75,74,0.03); }
+  .upload-box .upload-icon { font-size: 28px; margin-bottom: 8px; }
+  .upload-box p { font-size: 13px; color: rgba(255,255,255,0.4); }
+  .upload-box span { font-size: 11px; color: rgba(255,255,255,0.25); font-family: var(--font-mono); }
+
+  .submit-btn {
+    width: 100%; padding: 16px; margin-top: 28px;
+    background: var(--red); border: none; color: white; border-radius: 6px;
+    font-family: var(--font-display); font-size: 22px; letter-spacing: 3px;
+    cursor: pointer; transition: all 0.2s;
+  }
+  .submit-btn:hover { background: var(--red-dark); transform: translateY(-1px); }
+  .submit-btn.teal { background: var(--teal); }
+  .submit-btn.teal:hover { background: var(--teal-dark); }
+  .submit-btn.amber { background: var(--amber); color: #1a1a1a; }
+  .submit-btn.amber:hover { background: var(--amber-dark); color: white; }
+  .submit-btn.purple { background: #534AB7; }
+  .submit-btn.purple:hover { background: #3C3489; }
+
+  /* ========== VICTIM STATUS ========== */
+  .status-container {
+    flex: 1; display: flex; align-items: center; justify-content: center; flex-direction: column;
+    padding: 40px 20px; background: radial-gradient(ellipse at center, rgba(29,158,117,0.06) 0%, transparent 70%);
+  }
+  .status-card { max-width: 600px; width: 100%; text-align: center; }
+  .status-icon-ring {
+    width: 100px; height: 100px; border-radius: 50%; margin: 0 auto 24px;
+    display: flex; align-items: center; justify-content: center; font-size: 40px; position: relative;
+  }
+  .status-icon-ring::before {
+    content: ''; position: absolute; inset: -4px; border-radius: 50%;
+    border: 2px solid transparent; animation: spin 3s linear infinite;
+  }
+  .status-pending .status-icon-ring { background: rgba(239,159,39,0.15); }
+  .status-pending .status-icon-ring::before { border-color: var(--amber) transparent transparent; }
+  .status-accepted .status-icon-ring { background: rgba(29,158,117,0.15); }
+  .status-accepted .status-icon-ring::before { border-color: var(--teal) transparent transparent; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  .status-title { font-family: var(--font-display); font-size: 52px; letter-spacing: 2px; margin-bottom: 8px; }
+  .status-pending .status-title { color: var(--amber); }
+  .status-accepted .status-title { color: var(--teal); }
+  .status-desc { color: rgba(255,255,255,0.5); font-size: 15px; line-height: 1.7; margin-bottom: 32px; }
+
+  .tracker-card {
+    background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.08);
+    border-radius: 12px; padding: 24px; margin-top: 24px; text-align: left;
+  }
+  .tracker-title { font-size: 11px; letter-spacing: 2px; text-transform: uppercase; color: rgba(255,255,255,0.35); font-family: var(--font-mono); margin-bottom: 16px; }
+  .tracker-steps { display: flex; flex-direction: column; gap: 12px; }
+  .tracker-step { display: flex; align-items: center; gap: 14px; }
+  .step-dot { width: 28px; height: 28px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 12px; flex-shrink: 0; }
+  .step-done { background: rgba(29,158,117,0.2); color: #5DCAA5; border: 1px solid rgba(29,158,117,0.4); }
+  .step-active { background: rgba(239,159,39,0.2); color: #FAC775; border: 1px solid rgba(239,159,39,0.4); animation: pulse 2s infinite; }
+  .step-pending { background: rgba(255,255,255,0.05); color: rgba(255,255,255,0.2); border: 1px solid rgba(255,255,255,0.08); }
+  .step-info { flex: 1; }
+  .step-label { font-size: 14px; font-weight: 500; }
+  .step-sub { font-size: 12px; color: rgba(255,255,255,0.35); margin-top: 2px; }
+
+  .volunteer-map-stub {
+    background: rgba(29,158,117,0.05); border: 1px solid rgba(29,158,117,0.2);
+    border-radius: 8px; padding: 20px; margin-top: 16px; display: flex; align-items: center; gap: 16px;
+  }
+  .map-icon { font-size: 32px; }
+  .map-text .map-label { font-size: 11px; color: rgba(255,255,255,0.35); font-family: var(--font-mono); letter-spacing: 1px; text-transform: uppercase; }
+  .map-text .map-addr { font-size: 14px; color: #5DCAA5; margin-top: 4px; }
+  .map-ping { width: 8px; height: 8px; background: var(--teal); border-radius: 50%; animation: pulse 1.5s infinite; margin-left: auto; }
+
+  /* ========== VICTIM BLOCKED NOTICE ========== */
+  .blocked-notice {
+    flex: 1; display: flex; align-items: center; justify-content: center;
+    padding: 40px 20px;
+    background: radial-gradient(ellipse at center, rgba(226,75,74,0.05) 0%, transparent 70%);
+  }
+  .blocked-card {
+    max-width: 500px; width: 100%; text-align: center;
+    background: rgba(255,255,255,0.03); border: 1px solid rgba(226,75,74,0.2);
+    border-radius: 16px; padding: 48px 40px;
+  }
+  .blocked-icon { font-size: 64px; margin-bottom: 20px; }
+  .blocked-title { font-family: var(--font-display); font-size: 40px; letter-spacing: 2px; color: var(--red); margin-bottom: 12px; }
+  .blocked-desc { font-size: 14px; color: rgba(255,255,255,0.5); line-height: 1.8; margin-bottom: 28px; }
+  .blocked-back-btn {
+    display: inline-flex; align-items: center; gap: 8px;
+    background: #272C2C; border: 1px solid rgba(226,75,74,0.4);
+    color: #f09595; padding: 12px 24px; border-radius: 6px;
+    cursor: pointer; font-family: var(--font-mono); font-size: 13px; letter-spacing: 1px;
+    transition: all 0.2s; text-transform: uppercase;
+  }
+  .blocked-back-btn:hover { background: rgba(226,75,74,0.3); color: white; }
+
+  /* ========== DASHBOARD EMBED WRAPPER ========== */
+  #dashboard-embed {
+    flex: 1; display: flex; flex-direction: column; min-height: 0;
+  }
+  .dashboard-frame {
+    flex: 1; border: none; width: 100%; min-height: calc(100vh - 60px);
+  }
+
+  /* ========== INLINE DASHBOARD (shown directly) ========== */
+  .dash-container { flex: 1; display: flex; overflow: hidden; }
+
+  /* Top stats ticker */
+  .dash-ticker {
+    background: rgba(226,75,74,0.1); border-bottom: 1px solid rgba(226,75,74,0.2);
+    padding: 8px 24px; display: flex; gap: 32px; overflow-x: auto; flex-shrink: 0;
+  }
+  .ticker-item { display: flex; align-items: center; gap: 8px; white-space: nowrap; }
+  .ticker-val { font-family: var(--font-display); font-size: 20px; color: var(--red); }
+  .ticker-lbl { font-size: 10px; color: rgba(255,255,255,0.4); letter-spacing: 1px; font-family: var(--font-mono); text-transform: uppercase; }
+  .ticker-div { width: 1px; height: 24px; background: rgba(255,255,255,0.1); }
+
+  /* Sidebar */
+  .dash-sidebar {
+    width: 260px; flex-shrink: 0; background: rgba(0,0,0,0.4);
+    border-right: 1px solid rgba(255,255,255,0.07); display: flex; flex-direction: column;
+    overflow-y: auto;
+  }
+  .dash-main { flex: 1; overflow-y: auto; padding: 24px; }
+
+  .sidebar-section { padding: 16px; border-bottom: 1px solid rgba(255,255,255,0.06); }
+  .sidebar-label { font-size: 9px; letter-spacing: 3px; text-transform: uppercase; color: rgba(255,255,255,0.3); font-family: var(--font-mono); margin-bottom: 12px; }
+
+  .stat-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+  .mini-stat { background: rgba(255,255,255,0.04); border-radius: 8px; padding: 10px; border: 1px solid rgba(255,255,255,0.06); }
+  .mini-stat-val { font-family: var(--font-display); font-size: 22px; }
+  .mini-stat-lbl { font-size: 9px; color: rgba(255,255,255,0.35); letter-spacing: 1px; text-transform: uppercase; margin-top: 2px; }
+
+  .incident-list { display: flex; flex-direction: column; gap: 8px; }
+  .incident-item {
+    background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.07);
+    border-radius: 8px; padding: 10px 12px; cursor: pointer; transition: all 0.15s;
+    border-left: 3px solid transparent;
+  }
+  .incident-item:hover { background: rgba(255,255,255,0.06); }
+  .incident-item.critical { border-left-color: var(--red); }
+  .incident-item.high { border-left-color: var(--amber); }
+  .incident-item.medium { border-left-color: var(--teal); }
+  .incident-type { font-size: 12px; font-weight: 600; }
+  .incident-loc { font-size: 11px; color: rgba(255,255,255,0.4); margin-top: 2px; }
+  .incident-score { font-size: 10px; font-family: var(--font-mono); margin-top: 4px; }
+  .score-bar { height: 3px; background: rgba(255,255,255,0.06); border-radius: 2px; margin-top: 6px; overflow: hidden; }
+  .score-fill { height: 100%; border-radius: 2px; }
+
+  /* Map area */
+  .map-section { margin-bottom: 24px; }
+  .map-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; }
+  .map-title { font-family: var(--font-display); font-size: 24px; letter-spacing: 2px; }
+  .map-tag { font-size: 10px; font-family: var(--font-mono); color: rgba(255,255,255,0.4); padding: 4px 10px; border: 1px solid rgba(255,255,255,0.1); border-radius: 100px; }
+  .leaflet-map-wrap { height: 360px; border-radius: 12px; overflow: hidden; border: 1px solid rgba(255,255,255,0.1); position: relative; }
+  .embedded-map-grid { display: grid; grid-template-columns: minmax(0, 1.4fr) minmax(250px, 0.8fr); gap: 20px; margin-bottom: 28px; }
+  .embedded-map-card, .embedded-info-card {
+    background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.08);
+    border-radius: 12px; padding: 18px;
+  }
+  .embedded-map-card .leaflet-map-wrap { height: 320px; margin-top: 14px; }
+  .embedded-info-card { display: flex; flex-direction: column; gap: 12px; }
+  .map-brief {
+    background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.06);
+    border-radius: 10px; padding: 14px;
+  }
+  .map-brief-label {
+    font-size: 10px; letter-spacing: 2px; text-transform: uppercase;
+    color: rgba(255,255,255,0.35); font-family: var(--font-mono); margin-bottom: 6px;
+  }
+  .map-brief-value { font-size: 13px; color: rgba(255,255,255,0.8); line-height: 1.6; }
+  .map-legend {
+    position: absolute; top: 12px; right: 12px; z-index: 500;
+    background: rgba(17, 19, 24, 0.92); border: 1px solid rgba(255,255,255,0.12);
+    border-radius: 10px; padding: 10px 12px; backdrop-filter: blur(10px);
+  }
+  .map-legend-title {
+    font-size: 8px; font-weight: 700; letter-spacing: 0.12em;
+    color: rgba(255,255,255,0.45); margin-bottom: 8px; font-family: var(--font-mono);
+  }
+  .map-legend-item {
+    display: flex; align-items: center; gap: 7px; font-size: 10px;
+    color: rgba(255,255,255,0.72); margin-bottom: 5px; font-family: var(--font-mono);
+  }
+  .map-legend-item:last-child { margin-bottom: 0; }
+  .map-legend-dot { width: 8px; height: 8px; border-radius: 50%; box-shadow: 0 0 8px currentColor; }
+  .map-count-pill {
+    position: absolute; bottom: 12px; left: 50%; transform: translateX(-50%);
+    z-index: 500; background: rgba(17, 19, 24, 0.88); border: 1px solid rgba(255,255,255,0.12);
+    border-radius: 20px; padding: 5px 14px; font-size: 10px; letter-spacing: 0.1em;
+    color: rgba(255,255,255,0.75); font-family: var(--font-mono);
+  }
+
+  /* Cards grid */
+  .cards-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 16px; margin-top: 24px; }
+  .dash-card {
+    background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.08);
+    border-radius: 10px; padding: 18px; transition: all 0.2s;
+  }
+  .dash-card:hover { background: rgba(255,255,255,0.05); }
+  .dash-card-top { display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px; }
+  .dash-card-title { font-size: 12px; font-weight: 600; letter-spacing: 1px; }
+  .dash-card-badge { font-size: 9px; font-family: var(--font-mono); padding: 3px 8px; border-radius: 100px; }
+  .badge-crit { background: rgba(226,75,74,0.15); color: #f09595; }
+  .badge-high { background: rgba(239,159,39,0.15); color: #FAC775; }
+  .badge-med { background: rgba(29,158,117,0.15); color: #5DCAA5; }
+  .dash-card-loc { font-size: 12px; color: rgba(255,255,255,0.5); margin-bottom: 8px; }
+  .dash-card-meta { font-size: 11px; color: rgba(255,255,255,0.3); font-family: var(--font-mono); }
+
+  /* Report form panel */
+  .report-panel {
+    background: rgba(0,0,0,0.3); border-top: 1px solid rgba(255,255,255,0.07);
+    padding: 14px 24px; display: flex; align-items: flex-end; gap: 12px; flex-wrap: wrap;
+  }
+  .rp-field { display: flex; flex-direction: column; gap: 4px; }
+  .rp-label { font-size: 9px; letter-spacing: 2px; text-transform: uppercase; color: rgba(255,255,255,0.35); font-family: var(--font-mono); }
+  .rp-input, .rp-select {
+    background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1);
+    color: white; padding: 8px 12px; border-radius: 6px; font-size: 12px;
+    font-family: var(--font-mono); outline: none;
+  }
+  .rp-input:focus, .rp-select:focus { border-color: rgba(226,75,74,0.5); }
+  .rp-select option { background: #1e1e1e; }
+  .rp-btn {
+    padding: 8px 20px; background: var(--red); border: none; color: white;
+    border-radius: 6px; font-family: var(--font-display); font-size: 16px;
+    letter-spacing: 2px; cursor: pointer; transition: all 0.2s; white-space: nowrap;
+  }
+  .rp-btn:hover { background: var(--red-dark); }
+
+  /* Priority chips */
+  .priority-chip { padding: 3px 10px; border-radius: 100px; font-size: 10px; font-family: var(--font-mono); }
+  .p-critical { background: rgba(226,75,74,0.15); color: #f09595; }
+  .p-high { background: rgba(239,159,39,0.15); color: #FAC775; }
+  .p-medium { background: rgba(29,158,117,0.15); color: #5DCAA5; }
+
+  /* ========== VOLUNTEER TASKS ========== */
+  .task-container { flex: 1; padding: 32px; max-width: 900px; margin: 0 auto; width: 100%; }
+  .task-header { margin-bottom: 32px; }
+  .task-header h2 { font-family: var(--font-display); font-size: 42px; letter-spacing: 2px; }
+  .task-header p { color: rgba(255,255,255,0.4); font-size: 13px; font-family: var(--font-mono); margin-top: 6px; }
+  .task-list { display: flex; flex-direction: column; gap: 16px; }
+  .task-card {
+    background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.08);
+    border-radius: 10px; padding: 20px 24px; display: flex; align-items: center; gap: 20px; transition: all 0.2s;
+  }
+  .task-card.available { border-left: 3px solid var(--teal); cursor: pointer; }
+  .task-card.available:hover { background: rgba(29,158,117,0.06); }
+  .task-card.locked { opacity: 0.4; border-left: 3px solid rgba(255,255,255,0.1); }
+  .task-card.completed { border-left: 3px solid rgba(255,255,255,0.3); opacity: 0.6; }
+  .task-priority { font-family: var(--font-display); font-size: 28px; color: var(--red); width: 40px; text-align: center; }
+  .task-info { flex: 1; }
+  .task-location { font-size: 15px; font-weight: 500; }
+  .task-meta { font-size: 12px; color: rgba(255,255,255,0.4); margin-top: 4px; font-family: var(--font-mono); }
+  .task-action { padding: 10px 20px; border-radius: 6px; border: none; cursor: pointer; font-family: var(--font-display); font-size: 16px; letter-spacing: 1px; transition: all 0.2s; }
+  .task-action.accept { background: rgba(29,158,117,0.2); color: #5DCAA5; border: 1px solid rgba(29,158,117,0.4); }
+  .task-action.accept:hover { background: rgba(29,158,117,0.35); }
+  .task-action.done { background: rgba(255,255,255,0.05); color: rgba(255,255,255,0.3); border: 1px solid rgba(255,255,255,0.08); }
+  .task-action.lock { background: transparent; color: rgba(255,255,255,0.2); border: 1px dashed rgba(255,255,255,0.1); }
+
+  /* ========== NGO HELP PAGE ========== */
+  .ngo-help-container { flex: 1; padding: 40px 20px; display: flex; align-items: flex-start; justify-content: center; background: radial-gradient(ellipse at top right, rgba(239,159,39,0.05) 0%, transparent 60%); }
+  .ngo-help-card { max-width: 700px; width: 100%; }
+  .ngo-help-title { font-family: var(--font-display); font-size: 40px; letter-spacing: 2px; margin-bottom: 8px; }
+  .disaster-alert { background: rgba(226,75,74,0.08); border: 1px solid rgba(226,75,74,0.25); border-radius: 10px; padding: 20px; margin-bottom: 28px; }
+  .disaster-alert .da-label { font-size: 10px; letter-spacing: 2px; text-transform: uppercase; color: #f09595; font-family: var(--font-mono); }
+  .disaster-alert .da-title { font-family: var(--font-display); font-size: 28px; color: white; margin-top: 4px; }
+  .disaster-alert .da-meta { font-size: 12px; color: rgba(255,255,255,0.4); margin-top: 6px; }
+  .help-options { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 24px; }
+  .help-option { background: rgba(255,255,255,0.03); border: 1.5px solid rgba(255,255,255,0.08); border-radius: 10px; padding: 16px; cursor: pointer; transition: all 0.2s; display: flex; align-items: center; gap: 12px; }
+  .help-option:hover { background: rgba(239,159,39,0.06); border-color: rgba(239,159,39,0.3); }
+  .help-option.selected { background: rgba(239,159,39,0.1); border-color: var(--amber); }
+  .help-option .ho-icon { font-size: 24px; }
+  .help-option .ho-label { font-size: 13px; font-weight: 500; }
+  .help-option .ho-desc { font-size: 11px; color: rgba(255,255,255,0.4); margin-top: 2px; }
+  .ho-check { width: 20px; height: 20px; border-radius: 50%; background: rgba(255,255,255,0.05); border: 1.5px solid rgba(255,255,255,0.15); margin-left: auto; transition: all 0.2s; }
+  .help-option.selected .ho-check { background: var(--amber); border-color: var(--amber); }
+
+  /* ========== ADMIN PANEL ========== */
+  .admin-container { flex: 1; padding: 32px; overflow-y: auto; }
+  .admin-grid { display: grid; grid-template-columns: 280px 1fr; gap: 24px; max-width: 1100px; margin: 0 auto; }
+  .admin-sidebar-panel { display: flex; flex-direction: column; gap: 16px; }
+  .admin-widget { background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.08); border-radius: 10px; padding: 20px; }
+  .admin-widget-title { font-size: 10px; letter-spacing: 2px; text-transform: uppercase; color: rgba(255,255,255,0.35); font-family: var(--font-mono); margin-bottom: 14px; }
+  .admin-stat { display: flex; align-items: center; justify-content: space-between; padding: 10px 0; border-bottom: 1px solid rgba(255,255,255,0.05); }
+  .admin-stat:last-child { border-bottom: none; }
+  .admin-stat-label { font-size: 13px; color: rgba(255,255,255,0.6); }
+  .admin-stat-val { font-family: var(--font-display); font-size: 22px; }
+  .admin-main { display: flex; flex-direction: column; gap: 20px; }
+  .admin-title { font-family: var(--font-display); font-size: 42px; letter-spacing: 2px; margin-bottom: 4px; }
+  .victim-row { background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.08); border-radius: 8px; padding: 16px 20px; display: flex; align-items: center; gap: 16px; flex-wrap: wrap; }
+  .victim-row .vr-id { font-family: var(--font-mono); font-size: 12px; color: rgba(255,255,255,0.3); width: 60px; }
+  .victim-row .vr-info { flex: 1; min-width: 180px; }
+  .victim-row .vr-name { font-size: 14px; font-weight: 500; }
+  .victim-row .vr-meta { font-size: 11px; color: rgba(255,255,255,0.4); margin-top: 2px; }
+  .assign-select { background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); color: white; padding: 8px 14px; border-radius: 6px; font-size: 13px; cursor: pointer; }
+  .assign-btn { padding: 8px 16px; border-radius: 6px; background: rgba(127,119,221,0.2); color: #AFA9EC; border: 1px solid rgba(127,119,221,0.3); cursor: pointer; font-size: 13px; transition: all 0.2s; }
+  .assign-btn:hover { background: rgba(127,119,221,0.35); }
+
+  /* ========== Leaflet ========== */
+  #dashMap, #volunteerTaskMap, #ngoAidMap, #adminCoordMap { width: 100%; height: 100%; }
+  .leaflet-container { background: #0d1117 !important; }
+  .leaflet-tile { filter: brightness(0.5) saturate(0.3) hue-rotate(180deg); }
+  .leaflet-control-attribution { display: none !important; }
+  .leaflet-popup-content-wrapper { background: #1e2229 !important; border: 1px solid rgba(255,255,255,0.15) !important; border-radius: 8px !important; color: white !important; }
+  .leaflet-popup-tip { background: #1e2229 !important; }
+
+  /* ========== TOAST ========== */
+  .toast-container { position: fixed; top: 70px; right: 16px; z-index: 9999; display: flex; flex-direction: column; gap: 8px; }
+  .toast {
+    padding: 12px 18px; border-radius: 8px; background: #1e2229;
+    border: 1px solid rgba(255,255,255,0.12); font-size: 13px;
+    animation: toastIn 0.25s ease; max-width: 300px;
+    display: flex; align-items: center; gap: 10px;
+  }
+  @keyframes toastIn { from{opacity:0;transform:translateX(20px)} to{opacity:1;transform:translateX(0)} }
+  .toast.success { border-color: rgba(29,158,117,0.4); }
+  .toast.error { border-color: rgba(226,75,74,0.4); }
+
+  /* ========== Responsive ========== */
+  @media(max-width: 700px) {
+    #home { justify-content: flex-start; padding: 32px 0 160px; }
+    .role-selector-wrap { width: 100%; }
+    .role-btn { min-width: 100%; }
+    .role-dropdown { max-height: min(280px, calc(100vh - 240px)); }
+    .form-grid { grid-template-columns: 1fr; }
+    .form-group.span2 { grid-column: span 1; }
+    .section-divider { grid-column: span 1; }
+    .admin-grid { grid-template-columns: 1fr; }
+    .help-options { grid-template-columns: 1fr; }
+    .role-quick-grid { grid-template-columns: 1fr 1fr; }
+    .stats-bar { flex-wrap: wrap; }
+    .stat-item { min-width: 50%; }
+    .task-card { flex-wrap: wrap; }
+    .dash-container { flex-direction: column; }
+    .dash-sidebar { width: 100%; max-height: 300px; }
+    .embedded-map-grid { grid-template-columns: 1fr; }
+    .report-panel { flex-direction: column; }
+  }
+</style>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+</head>
+<body>
+
+<div class="toast-container" id="toastContainer"></div>
+
+<!-- =================== HOME PAGE =================== -->
+<div id="home" class="page active">
+  <div class="bg-grid"></div>
+  <div class="bg-orb orb1"></div>
+  <div class="bg-orb orb2"></div>
+  <div class="bg-orb orb3"></div>
+  <div class="rescue-images">
+    <div class="rescue-img-placeholder">🚁</div>
+    <div class="rescue-img-placeholder">🏥</div>
+    <div class="rescue-img-placeholder">🚒</div>
+    <div class="rescue-img-placeholder">⛑️</div>
+    <div class="rescue-img-placeholder">🌊</div>
+    <div class="rescue-img-placeholder">🆘</div>
+  </div>
+  <div class="home-content">
+    <div class="alert-badge"><div class="pulse-dot"></div> LIVE OPERATIONS ACTIVE</div>
+    <div class="home-title">RESQ<span>NET</span></div>
+    <div class="home-subtitle">Disaster Management System · Emergency Response</div>
+    <div class="role-selector-wrap">
+      <button class="role-btn" id="roleBtn" onclick="toggleDropdown()">
+        <span id="roleLabel">SELECT YOUR ROLE</span>
+        <span class="chevron">▼</span>
+      </button>
+      <div class="role-dropdown" id="roleDropdown">
+        <div class="role-option" onclick="selectRole('victim')">
+          <span class="role-icon">🆘</span>
+          <div><div>VICTIM</div><div class="role-desc">I need emergency help</div></div>
+        </div>
+        <div class="role-option" onclick="selectRole('volunteer')">
+          <span class="role-icon">⛑️</span>
+          <div><div>VOLUNTEER</div><div class="role-desc">I want to help rescue</div></div>
+        </div>
+        <div class="role-option" onclick="selectRole('ngo')">
+          <span class="role-icon">🏛️</span>
+          <div><div>NGO</div><div class="role-desc">Organization offering aid</div></div>
+        </div>
+        <div class="role-option" onclick="selectRole('admin')">
+          <span class="role-icon">🛡️</span>
+          <div><div>ADMIN</div><div class="role-desc">System administrator</div></div>
+        </div>
+      </div>
+    </div>
+    <div class="role-quick-grid">
+      <div class="role-quick-card" onclick="selectRole('victim')">
+        <span class="role-quick-icon">ðŸ†˜</span>
+        <div class="role-quick-title">VICTIM</div>
+        <div class="role-quick-desc">Emergency help request and live request tracking.</div>
+      </div>
+      <div class="role-quick-card" onclick="selectRole('volunteer')">
+        <span class="role-quick-icon">â›‘ï¸</span>
+        <div class="role-quick-title">VOLUNTEER</div>
+        <div class="role-quick-desc">See assignments, nearby zones, and response priorities.</div>
+      </div>
+      <div class="role-quick-card" onclick="selectRole('ngo')">
+        <span class="role-quick-icon">ðŸ›ï¸</span>
+        <div class="role-quick-title">NGO</div>
+        <div class="role-quick-desc">Offer aid with an area map of active relief demand.</div>
+      </div>
+      <div class="role-quick-card" onclick="selectRole('admin')">
+        <span class="role-quick-icon">ðŸ›¡ï¸</span>
+        <div class="role-quick-title">ADMIN</div>
+        <div class="role-quick-desc">Coordinate assignments with the full live operations map.</div>
+      </div>
+    </div>
+  </div>
+  <div class="stats-bar">
+    <div class="stat-item"><div class="stat-num">1,247</div><div class="stat-label">Active Requests</div></div>
+    <div class="stat-item"><div class="stat-num">843</div><div class="stat-label">Volunteers Deployed</div></div>
+    <div class="stat-item"><div class="stat-num">56</div><div class="stat-label">NGOs Active</div></div>
+    <div class="stat-item"><div class="stat-num">94%</div><div class="stat-label">Response Rate</div></div>
+  </div>
+</div>
+
+<!-- =================== VICTIM REGISTRATION =================== -->
+<div id="victim-reg" class="page">
+  <div class="page-header">
+    <div class="logo">RESQNET</div>
+    <div class="role-badge badge-victim">🆘 VICTIM</div>
+    <button class="back-btn" onclick="goHome()">← Back</button>
+  </div>
+  <div class="form-container">
+    <div class="form-card">
+      <div class="form-title">EMERGENCY<br>REGISTRATION</div>
+      <div class="form-subtitle">// FILL ACCURATELY — YOUR LIFE MATTERS</div>
+      <div class="form-grid">
+        <div class="form-group"><label class="form-label">Full Name <span class="req">*</span></label><input type="text" class="form-input" placeholder="Enter your full name"></div>
+        <div class="form-group"><label class="form-label">Phone No. <span class="req">*</span></label><input type="tel" class="form-input" placeholder="+91 XXXXX XXXXX"></div>
+        <div class="form-group"><label class="form-label">Email ID</label><input type="email" class="form-input" placeholder="your@email.com"></div>
+        <div class="form-group"><label class="form-label">Password <span class="req">*</span></label><input type="password" class="form-input" placeholder="Create a password"></div>
+        <div class="form-group span2"><label class="form-label">Current Location <span class="req">*</span></label><input type="text" class="form-input" placeholder="Street, City, State, PIN Code"></div>
+        <div class="form-group"><label class="form-label">Disaster Type <span class="req">*</span></label>
+          <select class="form-select"><option value="">Select disaster type</option><option>Flood</option><option>Earthquake</option><option>Cyclone / Storm</option><option>Fire</option><option>Landslide</option><option>Industrial Accident</option><option>Building Collapse</option><option>Other</option></select>
+        </div>
+        <div class="form-group"><label class="form-label">Injury Level <span class="req">*</span></label>
+          <select class="form-select"><option value="">How severe?</option><option>Critical — Immediate help needed</option><option>Moderate — Injured but stable</option><option>Minor — Mostly safe</option><option>None — Stranded only</option></select>
+        </div>
+        <div class="form-group"><label class="form-label">No. of People</label><input type="number" class="form-input" placeholder="How many need rescue?" min="1"></div>
+        <div class="form-group"><label class="form-label">Children / Elderly?</label>
+          <select class="form-select"><option value="">Select</option><option>Yes — Children present</option><option>Yes — Elderly present</option><option>Yes — Both</option><option>No</option></select>
+        </div>
+        <div class="form-group span2"><label class="form-label">Additional Information</label><textarea class="form-textarea" placeholder="Describe your situation, any medical conditions, accessibility issues..."></textarea></div>
+      </div>
+      <button class="submit-btn" onclick="showVictimStatus()">SUBMIT REQUEST →</button>
+    </div>
+  </div>
+</div>
+
+<!-- =================== VICTIM STATUS =================== -->
+<div id="victim-status" class="page">
+  <div class="page-header">
+    <div class="logo">RESQNET</div>
+    <div class="role-badge badge-victim">🆘 VICTIM</div>
+    <button class="back-btn" onclick="goHome()">← Home</button>
+  </div>
+  <div class="status-container">
+    <div class="status-card status-pending" id="victimStatusCard">
+      <div class="status-icon-ring">⏳</div>
+      <div class="status-title">REQUEST PENDING</div>
+      <p class="status-desc">Your emergency request has been received and is being processed.<br>A volunteer will be assigned based on priority and proximity.</p>
+      <div class="tracker-card">
+        <div class="tracker-title">// Request Tracking</div>
+        <div class="tracker-steps">
+          <div class="tracker-step"><div class="step-dot step-done">✓</div><div class="step-info"><div class="step-label">Request Submitted</div><div class="step-sub">Received at 10:24 AM</div></div></div>
+          <div class="tracker-step"><div class="step-dot step-active">⟳</div><div class="step-info"><div class="step-label">Reviewing & Prioritizing</div><div class="step-sub">Priority algorithm running...</div></div></div>
+          <div class="tracker-step"><div class="step-dot step-pending">3</div><div class="step-info"><div class="step-label">Volunteer Assigned</div><div class="step-sub">Awaiting assignment</div></div></div>
+          <div class="tracker-step"><div class="step-dot step-pending">4</div><div class="step-info"><div class="step-label">Help Dispatched</div><div class="step-sub">–</div></div></div>
+        </div>
+        <div style="margin-top:16px;">
+          <button class="submit-btn" style="margin-top:8px;font-size:16px;padding:12px;" onclick="simulateAccepted()">SIMULATE: Mark as Accepted</button>
+        </div>
+      </div>
+    </div>
+    <div id="volunteerTracker" style="display:none;max-width:600px;width:100%;margin-top:20px;">
+      <div class="volunteer-map-stub">
+        <span class="map-icon">📍</span>
+        <div class="map-text"><div class="map-label">Assigned Volunteer Location</div><div class="map-addr">Ravi Kumar · 1.2 km away · ETA 8 mins</div><div style="font-size:11px;color:rgba(255,255,255,0.25);margin-top:4px;">📞 +91 98765 43210</div></div>
+        <div class="map-ping"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- =================== VOLUNTEER REGISTRATION =================== -->
+<div id="volunteer-reg" class="page">
+  <div class="page-header">
+    <div class="logo">RESQNET</div>
+    <div class="role-badge badge-volunteer">⛑️ VOLUNTEER</div>
+    <button class="back-btn" onclick="goHome()">← Back</button>
+  </div>
+  <div class="form-container">
+    <div class="form-card">
+      <div class="form-title">VOLUNTEER<br>REGISTRATION</div>
+      <div class="form-subtitle">// BECOME A HERO — YOUR SKILLS SAVE LIVES</div>
+      <div class="form-grid">
+        <div class="form-group"><label class="form-label">Full Name <span class="req">*</span></label><input type="text" class="form-input" placeholder="Your full name"></div>
+        <div class="form-group"><label class="form-label">Phone No. <span class="req">*</span></label><input type="tel" class="form-input" placeholder="+91 XXXXX XXXXX"></div>
+        <div class="form-group"><label class="form-label">Email ID <span class="req">*</span></label><input type="email" class="form-input" placeholder="your@email.com"></div>
+        <div class="form-group"><label class="form-label">Password <span class="req">*</span></label><input type="password" class="form-input" placeholder="Create a strong password"></div>
+        <div class="form-group span2"><label class="form-label">Home Address <span class="req">*</span></label><input type="text" class="form-input" placeholder="Full residential address with PIN code"></div>
+        <div class="form-group"><label class="form-label">Age</label><input type="number" class="form-input" placeholder="Your age" min="18" max="70"></div>
+        <div class="form-group"><label class="form-label">Blood Group</label>
+          <select class="form-select"><option value="">Select</option><option>A+</option><option>A-</option><option>B+</option><option>B-</option><option>O+</option><option>O-</option><option>AB+</option><option>AB-</option></select>
+        </div>
+        <div class="form-group span2"><div class="section-divider">// SKILLS & EXPERIENCE</div></div>
+        <div class="form-group"><label class="form-label">Experience Level</label>
+          <select class="form-select"><option value="">Select</option><option>Beginner</option><option>Basic First Aid trained</option><option>Experienced Rescuer</option><option>Professional (Military/Fire/Police)</option></select>
+        </div>
+        <div class="form-group"><label class="form-label">Specialization</label>
+          <select class="form-select"><option value="">Select</option><option>First Aid / Medical</option><option>Search & Rescue</option><option>Flood Response</option><option>Logistics & Supply</option><option>Communications</option><option>Counselling</option></select>
+        </div>
+        <div class="form-group span2"><label class="form-label">Skills Description</label><textarea class="form-textarea" placeholder="Describe your skills, certifications, past experience..."></textarea></div>
+        <div class="form-group span2"><div class="section-divider">// IDENTITY & DOCUMENTS</div></div>
+        <div class="form-group"><label class="form-label">Aadhaar Card No.</label><input type="text" class="form-input" placeholder="XXXX XXXX XXXX"></div>
+        <div class="form-group"><label class="form-label">Driving Licence No.</label><input type="text" class="form-input" placeholder="DL number (if any)"></div>
+        <div class="form-group span2"><label class="form-label">Upload ID Proof</label>
+          <div class="upload-box"><div class="upload-icon">📄</div><p>Click to upload Aadhaar / PAN / Passport</p><span>PDF, JPG, PNG — max 5MB</span></div>
+        </div>
+        <div class="form-group"><label class="form-label">Availability</label>
+          <select class="form-select"><option value="">Select</option><option>Full time (24/7)</option><option>Daytime only</option><option>Weekends only</option><option>On-call</option></select>
+        </div>
+        <div class="form-group"><label class="form-label">Vehicle Available?</label>
+          <select class="form-select"><option value="">Select</option><option>Yes — Bike</option><option>Yes — Car</option><option>Yes — Truck/Van</option><option>No vehicle</option></select>
+        </div>
+      </div>
+      <button class="submit-btn teal" onclick="loginAs('volunteer')">SUBMIT & JOIN MISSION →</button>
+    </div>
+  </div>
+</div>
+
+<!-- =================== NGO REGISTRATION =================== -->
+<div id="ngo-reg" class="page">
+  <div class="page-header">
+    <div class="logo">RESQNET</div>
+    <div class="role-badge badge-ngo">🏛️ NGO</div>
+    <button class="back-btn" onclick="goHome()">← Back</button>
+  </div>
+  <div class="form-container">
+    <div class="form-card">
+      <div class="form-title">NGO<br>REGISTRATION</div>
+      <div class="form-subtitle">// REGISTER YOUR ORGANIZATION FOR DISASTER RESPONSE</div>
+      <div class="form-grid">
+        <div class="form-group span2"><label class="form-label">Organization Name <span class="req">*</span></label><input type="text" class="form-input" placeholder="Full registered name of the NGO"></div>
+        <div class="form-group"><label class="form-label">Registration No. <span class="req">*</span></label><input type="text" class="form-input" placeholder="Govt registration number"></div>
+        <div class="form-group"><label class="form-label">Established Year <span class="req">*</span></label><input type="number" class="form-input" placeholder="e.g. 2005"></div>
+        <div class="form-group span2"><label class="form-label">Head / President Name <span class="req">*</span></label><input type="text" class="form-input" placeholder="Who leads the organization?"></div>
+        <div class="form-group"><label class="form-label">Contact Phone <span class="req">*</span></label><input type="tel" class="form-input" placeholder="+91 XXXXX XXXXX"></div>
+        <div class="form-group"><label class="form-label">Official Email <span class="req">*</span></label><input type="email" class="form-input" placeholder="info@yourNGO.org"></div>
+        <div class="form-group span2"><label class="form-label">Registered Address <span class="req">*</span></label><input type="text" class="form-input" placeholder="Complete registered address with PIN"></div>
+        <div class="form-group span2"><div class="section-divider">// CAPACITY & FUNDING</div></div>
+        <div class="form-group"><label class="form-label">Total Workers</label><input type="number" class="form-input" placeholder="Number of active workers"></div>
+        <div class="form-group"><label class="form-label">Trained Rescue Workers</label><input type="number" class="form-input" placeholder="No. trained specifically"></div>
+        <div class="form-group span2"><label class="form-label">Past Disaster Response Experience</label><textarea class="form-textarea" placeholder="List disasters you've responded to, year, location, number helped..."></textarea></div>
+        <div class="form-group span2"><label class="form-label">Upload NGO Certificate</label>
+          <div class="upload-box"><div class="upload-icon">📋</div><p>Upload registration certificate</p><span>PDF — max 10MB</span></div>
+        </div>
+        <div class="form-group span2"><label class="form-label">Password <span class="req">*</span></label><input type="password" class="form-input" placeholder="Create secure password"></div>
+      </div>
+      <button class="submit-btn amber" onclick="loginAs('ngo')">SUBMIT ORGANIZATION →</button>
+    </div>
+  </div>
+</div>
+
+<!-- =================== ADMIN LOGIN =================== -->
+<div id="admin-login" class="page">
+  <div class="page-header">
+    <div class="logo">RESQNET</div>
+    <div class="role-badge badge-admin">🛡️ ADMIN</div>
+    <button class="back-btn" onclick="goHome()">← Back</button>
+  </div>
+  <div class="form-container">
+    <div class="form-card" style="max-width:420px;">
+      <div class="form-title">ADMIN<br>LOGIN</div>
+      <div class="form-subtitle">// SECURE ACCESS — AUTHORIZED PERSONNEL ONLY</div>
+      <div class="form-grid single" style="grid-template-columns:1fr;">
+        <div class="form-group"><label class="form-label">Admin Email <span class="req">*</span></label><input type="email" class="form-input" placeholder="admin@resqnet.gov"></div>
+        <div class="form-group"><label class="form-label">Password <span class="req">*</span></label><input type="password" class="form-input" placeholder="Enter admin password"></div>
+        <div class="form-group"><label class="form-label">Admin Code <span class="req">*</span></label><input type="text" class="form-input" placeholder="6-digit security code"></div>
+      </div>
+      <button class="submit-btn purple" onclick="loginAs('admin')">ACCESS SYSTEM →</button>
+    </div>
+  </div>
+</div>
+
+<!-- =================== DASHBOARD (Volunteer / NGO / Admin) =================== -->
+<div id="main-dashboard" class="page">
+  <div class="page-header">
+    <div class="logo">RESQNET</div>
+    <div class="role-badge" id="dashRoleBadge">⛑️ VOLUNTEER</div>
+    <div style="display:flex;gap:8px;margin-left:auto;align-items:center;">
+      <div id="dashExtraBtn"></div>
+      <button class="back-btn" onclick="goHome()">← Sign Out</button>
+    </div>
+  </div>
+
+  <!-- Ticker bar -->
+  <div class="dash-ticker">
+    <div class="ticker-item"><div class="ticker-val">1,247</div><div class="ticker-lbl">Active Incidents</div></div>
+    <div class="ticker-div"></div>
+    <div class="ticker-item"><div class="ticker-val">843</div><div class="ticker-lbl">Volunteers Online</div></div>
+    <div class="ticker-div"></div>
+    <div class="ticker-item"><div class="ticker-val" style="color:var(--teal)">389</div><div class="ticker-lbl">Resolved Today</div></div>
+    <div class="ticker-div"></div>
+    <div class="ticker-item"><div class="ticker-val" style="color:var(--amber)">56</div><div class="ticker-lbl">NGOs Active</div></div>
+    <div class="ticker-div"></div>
+    <div class="ticker-item"><div class="ticker-val" style="color:rgba(255,255,255,0.6)">94%</div><div class="ticker-lbl">Response Rate</div></div>
+  </div>
+
+  <!-- Main body -->
+  <div class="dash-container">
+    <!-- Sidebar -->
+    <div class="dash-sidebar">
+      <div class="sidebar-section">
+        <div class="sidebar-label">System Overview</div>
+        <div class="stat-grid">
+          <div class="mini-stat"><div class="mini-stat-val" style="color:var(--red)">3</div><div class="mini-stat-lbl">Critical</div></div>
+          <div class="mini-stat"><div class="mini-stat-val" style="color:var(--amber)">7</div><div class="mini-stat-lbl">High</div></div>
+          <div class="mini-stat"><div class="mini-stat-val" style="color:var(--teal)">12</div><div class="mini-stat-lbl">Active</div></div>
+          <div class="mini-stat"><div class="mini-stat-val" style="color:rgba(255,255,255,0.5)">43k</div><div class="mini-stat-lbl">Affected</div></div>
+        </div>
+      </div>
+      <div class="sidebar-section" style="flex:1;overflow:hidden;display:flex;flex-direction:column;">
+        <div class="sidebar-label">Incident Queue ↓ Priority</div>
+        <div class="incident-list" style="overflow-y:auto;flex:1;">
+          <div class="incident-item critical">
+            <div style="display:flex;justify-content:space-between;align-items:center;">
+              <div class="incident-type">🌊 Flood</div>
+              <span class="priority-chip p-critical">CRITICAL</span>
+            </div>
+            <div class="incident-loc">Zone A — Riverbank</div>
+            <div class="incident-score" style="color:var(--red)">Score: 187 · 12,000 affected</div>
+            <div class="score-bar"><div class="score-fill" style="width:94%;background:var(--red)"></div></div>
+          </div>
+          <div class="incident-item critical">
+            <div style="display:flex;justify-content:space-between;align-items:center;">
+              <div class="incident-type">⚡ Earthquake</div>
+              <span class="priority-chip p-critical">CRITICAL</span>
+            </div>
+            <div class="incident-loc">Zone B — City Center</div>
+            <div class="incident-score" style="color:var(--red)">Score: 155 · 25,000 affected</div>
+            <div class="score-bar"><div class="score-fill" style="width:78%;background:var(--red)"></div></div>
+          </div>
+          <div class="incident-item high">
+            <div style="display:flex;justify-content:space-between;align-items:center;">
+              <div class="incident-type">🔥 Fire</div>
+              <span class="priority-chip p-high">HIGH</span>
+            </div>
+            <div class="incident-loc">Zone C — Industrial</div>
+            <div class="incident-score" style="color:var(--amber)">Score: 116 · 3,000 affected</div>
+            <div class="score-bar"><div class="score-fill" style="width:58%;background:var(--amber)"></div></div>
+          </div>
+          <div class="incident-item medium">
+            <div style="display:flex;justify-content:space-between;align-items:center;">
+              <div class="incident-type">⛰ Landslide</div>
+              <span class="priority-chip p-medium">MEDIUM</span>
+            </div>
+            <div class="incident-loc">Zone D — Hill Road</div>
+            <div class="incident-score" style="color:var(--teal)">Score: 82 · 800 affected</div>
+            <div class="score-bar"><div class="score-fill" style="width:41%;background:var(--teal)"></div></div>
+          </div>
+          <div class="incident-item medium">
+            <div style="display:flex;justify-content:space-between;align-items:center;">
+              <div class="incident-type">🌪 Storm</div>
+              <span class="priority-chip p-medium">MEDIUM</span>
+            </div>
+            <div class="incident-loc">Zone E — Coastal</div>
+            <div class="incident-score" style="color:var(--teal)">Score: 71 · 5,000 affected</div>
+            <div class="score-bar"><div class="score-fill" style="width:36%;background:var(--teal)"></div></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Main content -->
+    <div style="flex:1;display:flex;flex-direction:column;overflow:hidden;">
+      <div class="dash-main" style="flex:1;overflow-y:auto;">
+        <div class="map-section">
+          <div class="map-header">
+            <div class="map-title">LIVE DISASTER MAP</div>
+            <div style="display:flex;gap:8px;">
+              <span class="map-tag">📍 5 Active Zones</span>
+              <span class="map-tag" style="color:var(--red);border-color:rgba(226,75,74,0.3);" id="liveTag">● LIVE</span>
+            </div>
+          </div>
+          <div class="leaflet-map-wrap">
+            <div id="dashMap"></div>
+          </div>
+        </div>
+
+        <!-- Role-specific content -->
+        <div id="roleSpecificContent"></div>
+      </div>
+
+      <!-- Report submission panel -->
+      <div class="report-panel" id="reportPanel">
+        <div style="font-size:10px;font-family:var(--font-mono);letter-spacing:2px;color:rgba(255,255,255,0.4);flex-shrink:0;">+ NEW INCIDENT</div>
+        <div class="rp-field">
+          <div class="rp-label">Type</div>
+          <select class="rp-select" id="rpType"><option>Flood</option><option>Earthquake</option><option>Fire</option><option>Landslide</option><option>Storm</option></select>
+        </div>
+        <div class="rp-field">
+          <div class="rp-label">Severity (1–10)</div>
+          <input type="number" class="rp-input" id="rpSev" value="5" min="1" max="10" style="width:80px;">
+        </div>
+        <div class="rp-field">
+          <div class="rp-label">Urgency</div>
+          <select class="rp-select" id="rpUrg"><option value="3">Immediate</option><option value="2">High</option><option value="1">Moderate</option></select>
+        </div>
+        <div class="rp-field" style="flex:1;">
+          <div class="rp-label">Location</div>
+          <input type="text" class="rp-input" id="rpLoc" placeholder="Zone / Area name" style="width:100%;">
+        </div>
+        <div class="rp-field">
+          <div class="rp-label">Affected</div>
+          <input type="number" class="rp-input" id="rpPpl" value="100" style="width:90px;">
+        </div>
+        <button class="rp-btn" onclick="submitReport()">SUBMIT</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- =================== VOLUNTEER TASKS PAGE =================== -->
+<div id="volunteer-tasks" class="page">
+  <div class="page-header">
+    <div class="logo">RESQNET</div>
+    <div class="role-badge badge-volunteer">⛑️ VOLUNTEER</div>
+    <div style="margin-left:auto;display:flex;gap:8px;">
+      <button class="dashboard-btn teal" onclick="showPage('main-dashboard')">← Dashboard</button>
+      <button class="back-btn" onclick="goHome()">Sign Out</button>
+    </div>
+  </div>
+  <div class="task-container">
+    <div class="task-header">
+      <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;">
+        <h2>ASSIGNED LOCATIONS</h2>
+        <span style="font-size:11px;color:rgba(255,255,255,0.35);font-family:var(--font-mono);padding:4px 12px;background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.08);border-radius:100px;">PRIORITY ALGORITHM ACTIVE</span>
+      </div>
+      <p>Complete tasks in order. Unlock next only after completing current.</p>
+    </div>
+    <div style="background:rgba(29,158,117,0.08);border:1px solid rgba(29,158,117,0.2);border-radius:8px;padding:14px 20px;margin-bottom:24px;font-size:13px;color:rgba(255,255,255,0.6);">
+      ⚡ Tasks sorted by: <strong style="color:#5DCAA5;">Distance + Injury Severity + No. of People</strong>
+    </div>
+    <div class="embedded-map-grid">
+      <div class="embedded-map-card">
+        <div class="map-header">
+          <div class="map-title">VOLUNTEER MAPVIEW</div>
+          <div style="display:flex;gap:8px;">
+            <span class="map-tag" style="color:#5DCAA5;border-color:rgba(29,158,117,0.3);">NEARBY MISSIONS</span>
+          </div>
+        </div>
+        <div class="leaflet-map-wrap">
+          <div id="volunteerTaskMap"></div>
+          <div class="map-legend">
+            <div class="map-legend-title">PRIORITY LEGEND</div>
+            <div class="map-legend-item"><div class="map-legend-dot" style="background:var(--red);color:var(--red);"></div><span>CRITICAL</span></div>
+            <div class="map-legend-item"><div class="map-legend-dot" style="background:var(--amber);color:var(--amber);"></div><span>HIGH</span></div>
+            <div class="map-legend-item"><div class="map-legend-dot" style="background:var(--teal);color:var(--teal);"></div><span>MEDIUM</span></div>
+          </div>
+          <div class="map-count-pill">4 TASK ZONES MAPPED</div>
+        </div>
+      </div>
+      <div class="embedded-info-card">
+        <div class="map-brief">
+          <div class="map-brief-label">Dispatch Focus</div>
+          <div class="map-brief-value">Closest critical victims are pinned first so volunteers can move in sequence.</div>
+        </div>
+        <div class="map-brief">
+          <div class="map-brief-label">First Destination</div>
+          <div class="map-brief-value">Gandhi Nagar, Block C remains your highest-priority stop.</div>
+        </div>
+        <div class="map-brief">
+          <div class="map-brief-label">Coverage</div>
+          <div class="map-brief-value">Markers include assigned flood, fire, and cyclone-related incidents.</div>
+        </div>
+      </div>
+    </div>
+    <div class="task-list">
+      <div class="task-card available" onclick="acceptTask(0)">
+        <div class="task-priority">#1</div>
+        <div class="task-info">
+          <div class="task-location">Gandhi Nagar, Block C — Apartment 3B</div>
+          <div class="task-meta">0.8 km · 5 victims · <span class="priority-chip p-critical">CRITICAL injury</span></div>
+          <div class="score-bar"><div class="score-fill" style="width:95%;background:var(--red)"></div></div>
+        </div>
+        <button class="task-action accept" id="taskBtn0">ACCEPT</button>
+      </div>
+      <div class="task-card locked" id="taskCard1">
+        <div class="task-priority">#2</div>
+        <div class="task-info">
+          <div class="task-location">Nehru Colony, Main Road — Shop Area</div>
+          <div class="task-meta">1.4 km · 8 victims · <span class="priority-chip p-high">HIGH injury</span></div>
+          <div class="score-bar"><div class="score-fill" style="width:76%;background:var(--amber)"></div></div>
+        </div>
+        <button class="task-action lock">🔒 LOCKED</button>
+      </div>
+      <div class="task-card locked" id="taskCard2">
+        <div class="task-priority">#3</div>
+        <div class="task-info">
+          <div class="task-location">Rajendra Nagar, School Ground</div>
+          <div class="task-meta">2.1 km · 12 victims · <span class="priority-chip p-medium">MODERATE</span></div>
+          <div class="score-bar"><div class="score-fill" style="width:60%;background:var(--teal)"></div></div>
+        </div>
+        <button class="task-action lock">🔒 LOCKED</button>
+      </div>
+      <div class="task-card locked" id="taskCard3">
+        <div class="task-priority">#4</div>
+        <div class="task-info">
+          <div class="task-location">Patliputra Colony, Park Area</div>
+          <div class="task-meta">3.5 km · 3 victims · <span class="priority-chip p-medium">MODERATE</span></div>
+          <div class="score-bar"><div class="score-fill" style="width:42%;background:var(--teal)"></div></div>
+        </div>
+        <button class="task-action lock">🔒 LOCKED</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- =================== NGO HELP PAGE =================== -->
+<div id="ngo-help" class="page">
+  <div class="page-header">
+    <div class="logo">RESQNET</div>
+    <div class="role-badge badge-ngo">🏛️ NGO</div>
+    <div style="margin-left:auto;display:flex;gap:8px;">
+      <button class="dashboard-btn amber" onclick="showPage('main-dashboard')">← Dashboard</button>
+      <button class="back-btn" onclick="goHome()">Sign Out</button>
+    </div>
+  </div>
+  <div class="ngo-help-container">
+    <div class="ngo-help-card">
+      <div class="ngo-help-title">WHAT CAN YOU PROVIDE?</div>
+      <p style="color:rgba(255,255,255,0.4);font-size:13px;margin-bottom:24px;font-family:var(--font-mono)">// ACTIVE DISASTER RESPONSE — SELECT YOUR CAPABILITIES</p>
+      <div class="disaster-alert">
+        <div class="da-label">⚠ Active Disaster Alert</div>
+        <div class="da-title">Major Flood — Patna, Bihar</div>
+        <div class="da-meta">Affected: ~15,000 people · Ongoing · Relief Required Immediately</div>
+      </div>
+      <div class="embedded-map-grid">
+        <div class="embedded-map-card">
+          <div class="map-header">
+            <div class="map-title">NGO MAPVIEW</div>
+            <div style="display:flex;gap:8px;">
+              <span class="map-tag" style="color:#FAC775;border-color:rgba(239,159,39,0.3);">AID DEMAND ZONES</span>
+            </div>
+          </div>
+          <div class="leaflet-map-wrap">
+            <div id="ngoAidMap"></div>
+            <div class="map-legend">
+              <div class="map-legend-title">PRIORITY LEGEND</div>
+              <div class="map-legend-item"><div class="map-legend-dot" style="background:var(--red);color:var(--red);"></div><span>CRITICAL</span></div>
+              <div class="map-legend-item"><div class="map-legend-dot" style="background:var(--amber);color:var(--amber);"></div><span>HIGH</span></div>
+              <div class="map-legend-item"><div class="map-legend-dot" style="background:var(--teal);color:var(--teal);"></div><span>MEDIUM</span></div>
+            </div>
+            <div class="map-count-pill">3 RELIEF ZONES MAPPED</div>
+          </div>
+        </div>
+        <div class="embedded-info-card">
+          <div class="map-brief">
+            <div class="map-brief-label">Highest Need</div>
+            <div class="map-brief-value">Riverbank and city-center flood shelters need food, medical kits, and rapid camp expansion.</div>
+          </div>
+          <div class="map-brief">
+            <div class="map-brief-label">Suggested Deployment</div>
+            <div class="map-brief-value">Use the map to match your support type with the closest pressure zone before submitting.</div>
+          </div>
+        </div>
+      </div>
+      <div class="help-options">
+        <div class="help-option" onclick="toggleHelp(this)"><span class="ho-icon">🍱</span><div><div class="ho-label">Food & Water</div><div class="ho-desc">Cooked meals, dry rations, drinking water</div></div><div class="ho-check"></div></div>
+        <div class="help-option" onclick="toggleHelp(this)"><span class="ho-icon">🏕️</span><div><div class="ho-label">Shelter / Camps</div><div class="ho-desc">Temporary housing, tents, relief camps</div></div><div class="ho-check"></div></div>
+        <div class="help-option" onclick="toggleHelp(this)"><span class="ho-icon">💊</span><div><div class="ho-label">Medical Aid</div><div class="ho-desc">Doctors, medicines, first aid</div></div><div class="ho-check"></div></div>
+        <div class="help-option" onclick="toggleHelp(this)"><span class="ho-icon">🚁</span><div><div class="ho-label">Rescue Operations</div><div class="ho-desc">Boats, trained rescuers, vehicles</div></div><div class="ho-check"></div></div>
+        <div class="help-option" onclick="toggleHelp(this)"><span class="ho-icon">👕</span><div><div class="ho-label">Clothing & Essentials</div><div class="ho-desc">Garments, blankets, hygiene kits</div></div><div class="ho-check"></div></div>
+        <div class="help-option" onclick="toggleHelp(this)"><span class="ho-icon">💰</span><div><div class="ho-label">Financial Aid</div><div class="ho-desc">Cash transfers, rebuilding grants</div></div><div class="ho-check"></div></div>
+      </div>
+      <div class="form-group" style="margin-bottom:16px;">
+        <label class="form-label">Quantity / Capacity Details</label>
+        <textarea class="form-textarea" placeholder="Specify how much: e.g. 500 meals/day, 50 beds, 3 doctors..."></textarea>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Deployment Timeline</label>
+        <select class="form-select"><option>Immediately (within hours)</option><option>Within 24 hours</option><option>Within 48 hours</option><option>Within a week</option></select>
+      </div>
+      <button class="submit-btn amber" style="margin-top:24px;" onclick="showToast('Offer submitted! Admin will coordinate with you shortly.','success')">SUBMIT OFFER →</button>
+    </div>
+  </div>
+</div>
+
+<!-- =================== ADMIN FULL PANEL =================== -->
+<div id="admin-panel" class="page">
+  <div class="page-header">
+    <div class="logo">RESQNET</div>
+    <div class="role-badge badge-admin">🛡️ ADMIN</div>
+    <div style="margin-left:auto;display:flex;gap:8px;">
+      <button class="dashboard-btn purple" onclick="showPage('main-dashboard')">← Dashboard</button>
+      <button class="back-btn" onclick="goHome()">Sign Out</button>
+    </div>
+  </div>
+  <div class="admin-container">
+    <div class="admin-grid">
+      <div class="admin-sidebar-panel">
+        <div class="admin-widget">
+          <div class="admin-widget-title">// Live Stats</div>
+          <div class="admin-stat"><span class="admin-stat-label">Active Victims</span><span class="admin-stat-val" style="color:var(--red)">1,247</span></div>
+          <div class="admin-stat"><span class="admin-stat-label">Volunteers Online</span><span class="admin-stat-val" style="color:var(--teal)">843</span></div>
+          <div class="admin-stat"><span class="admin-stat-label">NGOs Active</span><span class="admin-stat-val" style="color:var(--amber)">56</span></div>
+          <div class="admin-stat"><span class="admin-stat-label">Resolved Today</span><span class="admin-stat-val" style="color:rgba(255,255,255,0.5)">389</span></div>
+        </div>
+        <div class="admin-widget">
+          <div class="admin-widget-title">// Disaster Zones</div>
+          <div style="font-size:13px;line-height:2.2;color:rgba(255,255,255,0.6)">
+            <div>📍 Patna Central <span style="float:right;color:var(--red)">HIGH</span></div>
+            <div>📍 Danapur <span style="float:right;color:var(--amber)">MED</span></div>
+            <div>📍 Hajipur <span style="float:right;color:var(--amber)">MED</span></div>
+            <div>📍 Ara <span style="float:right;color:var(--teal)">LOW</span></div>
+          </div>
+        </div>
+        <div class="admin-widget">
+          <div class="admin-widget-title">// Priority Formula</div>
+          <div style="font-size:11px;color:rgba(255,255,255,0.4);line-height:1.9;font-family:var(--font-mono)">
+            Severity × 10<br>+ Affected ÷ 500<br>+ Urgency × 15<br>× Time Decay
+          </div>
+        </div>
+      </div>
+      <div class="admin-main">
+        <div>
+          <div class="admin-title">ADMIN PANEL</div>
+          <div style="font-size:13px;color:rgba(255,255,255,0.4);font-family:var(--font-mono);margin-bottom:24px">// ASSIGN VOLUNTEERS TO VICTIMS — PRIORITY ORDER</div>
+        </div>
+        <div class="embedded-map-grid">
+          <div class="embedded-map-card">
+            <div class="map-header">
+              <div class="map-title">ADMIN MAPVIEW</div>
+              <div style="display:flex;gap:8px;">
+                <span class="map-tag" style="color:#AFA9EC;border-color:rgba(127,119,221,0.3);">GLOBAL COORDINATION</span>
+              </div>
+            </div>
+            <div class="leaflet-map-wrap">
+              <div id="adminCoordMap"></div>
+              <div class="map-legend">
+                <div class="map-legend-title">PRIORITY LEGEND</div>
+                <div class="map-legend-item"><div class="map-legend-dot" style="background:var(--red);color:var(--red);"></div><span>CRITICAL</span></div>
+                <div class="map-legend-item"><div class="map-legend-dot" style="background:var(--amber);color:var(--amber);"></div><span>HIGH</span></div>
+                <div class="map-legend-item"><div class="map-legend-dot" style="background:var(--teal);color:var(--teal);"></div><span>MEDIUM</span></div>
+              </div>
+              <div class="map-count-pill">5 INCIDENTS MAPPED</div>
+            </div>
+          </div>
+          <div class="embedded-info-card">
+            <div class="map-brief">
+              <div class="map-brief-label">Control Summary</div>
+              <div class="map-brief-value">Use this live view to cross-check assignment rows against real-time zone clustering.</div>
+            </div>
+            <div class="map-brief">
+              <div class="map-brief-label">Critical Queue</div>
+              <div class="map-brief-value">Two red markers remain the top routing priority for volunteer dispatch.</div>
+            </div>
+          </div>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:12px;">
+          <div class="victim-row">
+            <div class="vr-id">#V001</div>
+            <div class="vr-info"><div class="vr-name">Meena Devi <span class="priority-chip p-critical" style="margin-left:8px">CRITICAL</span></div><div class="vr-meta">📍 Gandhi Nagar · Flood · 5 people · Score: 94</div></div>
+            <select class="assign-select"><option>-- Volunteer --</option><option>Ravi Kumar (0.8km)</option><option>Suresh Yadav (1.2km)</option><option>Anjali Singh (2.1km)</option></select>
+            <button class="assign-btn" onclick="assignVolunteer(this)">ASSIGN</button>
+          </div>
+          <div class="victim-row">
+            <div class="vr-id">#V002</div>
+            <div class="vr-info"><div class="vr-name">Ramesh Prasad <span class="priority-chip p-high" style="margin-left:8px">HIGH</span></div><div class="vr-meta">📍 Nehru Colony · Flood · 2 people · Score: 78</div></div>
+            <select class="assign-select"><option>-- Volunteer --</option><option>Priya Sharma (0.9km)</option><option>Ravi Kumar (1.4km)</option></select>
+            <button class="assign-btn" onclick="assignVolunteer(this)">ASSIGN</button>
+          </div>
+          <div class="victim-row">
+            <div class="vr-id">#V003</div>
+            <div class="vr-info"><div class="vr-name">Lakshmi Kumari <span class="priority-chip p-high" style="margin-left:8px">HIGH</span></div><div class="vr-meta">📍 Rajendra Nagar · Cyclone · 8 people · Score: 71</div></div>
+            <select class="assign-select"><option>-- Volunteer --</option><option>Ankit Raj (2.0km)</option><option>Suresh Yadav (2.5km)</option></select>
+            <button class="assign-btn" onclick="assignVolunteer(this)">ASSIGN</button>
+          </div>
+          <div class="victim-row">
+            <div class="vr-id">#V004</div>
+            <div class="vr-info"><div class="vr-name">Mohan Lal <span class="priority-chip p-medium" style="margin-left:8px">MODERATE</span></div><div class="vr-meta">📍 Patliputra · Fire · 1 person · Score: 52</div></div>
+            <select class="assign-select"><option>-- Volunteer --</option><option>Kavita Rani (3.0km)</option><option>Priya Sharma (3.5km)</option></select>
+            <button class="assign-btn" onclick="assignVolunteer(this)">ASSIGN</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script>
+  // =================== STATE ===================
+  let currentRole = null;
+  const mapInstances = {};
+  let tasksDone = [false, false, false, false];
+
+  const INCIDENTS = [
+    { lat: 28.65, lng: 77.23, type: 'Flood',      loc: 'Zone A — Riverbank',  score: 187, level: 'critical', color: '#E24B4A' },
+    { lat: 28.70, lng: 77.10, type: 'Earthquake',  loc: 'Zone B — City Center', score: 155, level: 'critical', color: '#E24B4A' },
+    { lat: 28.58, lng: 77.35, type: 'Fire',        loc: 'Zone C — Industrial', score: 116, level: 'high',     color: '#EF9F27' },
+    { lat: 28.75, lng: 77.18, type: 'Landslide',   loc: 'Zone D — Hill Road',  score: 82,  level: 'medium',   color: '#1D9E75' },
+    { lat: 28.62, lng: 77.08, type: 'Storm',       loc: 'Zone E — Coastal',    score: 71,  level: 'medium',   color: '#1D9E75' },
+  ];
+
+  const MAP_SCENES = {
+    'main-dashboard': [{ id: 'dashMap', incidents: INCIDENTS }],
+    'volunteer-tasks': [{ id: 'volunteerTaskMap', incidents: INCIDENTS.slice(0, 4) }],
+    'ngo-help': [{ id: 'ngoAidMap', incidents: INCIDENTS.slice(0, 3) }],
+    'admin-panel': [{ id: 'adminCoordMap', incidents: INCIDENTS }],
+  };
+
+  // =================== ROUTING ===================
+  function goHome() {
+    currentRole = null;
+    showPage('home');
+  }
+
+  function showPage(id) {
+    document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+    document.getElementById(id).classList.add('active');
+    window.scrollTo(0, 0);
+    setTimeout(() => ensureMapsForPage(id), 80);
+  }
+
+  function toggleDropdown() {
+    document.getElementById('roleBtn').classList.toggle('open');
+    document.getElementById('roleDropdown').classList.toggle('open');
+  }
+
+  function selectRole(role) {
+    currentRole = role;
+    document.getElementById('roleBtn').classList.remove('open');
+    document.getElementById('roleDropdown').classList.remove('open');
+
+    // VICTIMS → registration only, NEVER dashboard
+    if (role === 'victim') {
+      showPage('victim-reg');
+      return;
+    }
+
+    // Admin → login page first
+    if (role === 'admin') {
+      showPage('admin-login');
+      return;
+    }
+
+    // Volunteer / NGO → registration form
+    if (role === 'volunteer') { showPage('volunteer-reg'); return; }
+    if (role === 'ngo')       { showPage('ngo-reg');       return; }
+  }
+
+  // Called after form submission for non-victim roles
+  function loginAs(role) {
+    currentRole = role;
+    setupDashboard(role);
+    showPage('main-dashboard');
+  }
+
+  // =================== DASHBOARD SETUP ===================
+  function setupDashboard(role) {
+    const badge  = document.getElementById('dashRoleBadge');
+    const extra  = document.getElementById('dashExtraBtn');
+    const rPanel = document.getElementById('reportPanel');
+    const content = document.getElementById('roleSpecificContent');
+
+    if (role === 'volunteer') {
+      badge.className = 'role-badge badge-volunteer';
+      badge.textContent = '⛑️ VOLUNTEER';
+      extra.innerHTML = `<button class="dashboard-btn teal" onclick="showPage('volunteer-tasks')">My Tasks →</button>`;
+      rPanel.style.display = 'flex';
+      content.innerHTML = volunteerCards();
+    } else if (role === 'ngo') {
+      badge.className = 'role-badge badge-ngo';
+      badge.textContent = '🏛️ NGO';
+      extra.innerHTML = `<button class="dashboard-btn amber" onclick="showPage('ngo-help')">Submit Aid Offer →</button>`;
+      rPanel.style.display = 'flex';
+      content.innerHTML = ngoCards();
+    } else if (role === 'admin') {
+      badge.className = 'role-badge badge-admin';
+      badge.textContent = '🛡️ ADMIN';
+      extra.innerHTML = `<button class="dashboard-btn purple" onclick="showPage('admin-panel')">Admin Panel →</button>`;
+      rPanel.style.display = 'flex';
+      content.innerHTML = adminCards();
+    }
+  }
+
+  function volunteerCards() {
+    return `
+      <div style="font-family:'Bebas Neue',sans-serif;font-size:22px;letter-spacing:2px;margin-bottom:14px;">YOUR ACTIVE TASKS</div>
+      <div class="cards-grid">
+        ${cardHTML('🌊 Flood Response','Zone A — Riverbank','CRITICAL','badge-crit','0.8 km away · 5 victims · Score: 187')}
+        ${cardHTML('⚡ Earthquake Aid','Zone B — City Center','HIGH','badge-high','1.4 km away · 8 victims · Score: 155')}
+        ${cardHTML('🔥 Fire Evacuation','Zone C — Industrial','HIGH','badge-high','2.1 km away · 3 victims · Score: 116')}
+      </div>`;
+  }
+
+  function ngoCards() {
+    return `
+      <div style="font-family:'Bebas Neue',sans-serif;font-size:22px;letter-spacing:2px;margin-bottom:14px;">ACTIVE RELIEF OPERATIONS</div>
+      <div class="cards-grid">
+        ${cardHTML('🍱 Food Distribution','Patna Central Zone','ONGOING','badge-med','500 meals/day · 3 teams deployed')}
+        ${cardHTML('💊 Medical Camp','Danapur Relief Zone','HIGH NEED','badge-high','2 doctors · medicines low')}
+        ${cardHTML('🏕️ Shelter Setup','Hajipur Flood Area','ACTIVE','badge-med','120 tents · 340 residents housed')}
+      </div>`;
+  }
+
+  function adminCards() {
+    return `
+      <div style="font-family:'Bebas Neue',sans-serif;font-size:22px;letter-spacing:2px;margin-bottom:14px;">SYSTEM ANALYTICS</div>
+      <div class="cards-grid">
+        ${cardHTML('📊 Response Rate','All active zones','94%','badge-med','389 resolved today · 843 volunteers')}
+        ${cardHTML('⚡ Critical Alerts','Unassigned requests','3 PENDING','badge-crit','Requires immediate volunteer assignment')}
+        ${cardHTML('🏛️ NGO Coordination','Active organizations','56 NGOs','badge-high','12 aid offers pending review')}
+      </div>`;
+  }
+
+  function cardHTML(title, loc, badge, badgeClass, meta) {
+    return `<div class="dash-card">
+      <div class="dash-card-top">
+        <div class="dash-card-title">${title}</div>
+        <span class="dash-card-badge ${badgeClass}">${badge}</span>
+      </div>
+      <div class="dash-card-loc">${loc}</div>
+      <div class="dash-card-meta">${meta}</div>
+    </div>`;
+  }
+
+  // =================== LEAFLET MAP ===================
+  function ensureMapsForPage(pageId) {
+    const scenes = MAP_SCENES[pageId] || [];
+    scenes.forEach(scene => initMap(scene.id, scene.incidents));
+  }
+
+  function markerIcon(inc) {
+    const size = inc.level === 'critical' ? 20 : inc.level === 'high' ? 16 : 13;
+    return L.divIcon({
+      className: '',
+      html: `<div style="
+        width:${size}px;height:${size}px;background:${inc.color};
+        border-radius:50%;border:2px solid rgba(255,255,255,0.7);
+        display:flex;align-items:center;justify-content:center;
+        box-shadow:0 0 12px ${inc.color};cursor:pointer;
+        position:relative;">
+        ${inc.level === 'critical' ? `<div style="position:absolute;inset:-6px;border-radius:50%;border:2px solid ${inc.color};opacity:0.4;"></div>` : ''}
+      </div>`,
+      iconSize: [size, size],
+      iconAnchor: [size / 2, size / 2],
+    });
+  }
+
+  function initMap(mapId, incidents) {
+    const mapEl = document.getElementById(mapId);
+    if (!mapEl || !window.L) return;
+
+    if (mapInstances[mapId]) {
+      mapInstances[mapId].invalidateSize();
+      return;
+    }
+
+    const map = L.map(mapId, { center: [28.65, 77.20], zoom: 11, zoomControl: true });
+    mapInstances[mapId] = map;
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
+
+    incidents.forEach(inc => {
+      L.marker([inc.lat, inc.lng], { icon: markerIcon(inc) })
+        .addTo(map)
+        .bindPopup(`<div style="font-family:monospace;font-size:12px;color:white;min-width:180px;">
+          <strong style="color:${inc.color}">${inc.type}</strong><br>
+          ${inc.loc}<br>
+          <span style="color:rgba(255,255,255,0.6)">Priority Score: <strong style="color:${inc.color}">${inc.score}</strong></span>
+        </div>`);
+    });
+  }
+
+  // =================== REPORT SUBMISSION ===================
+  function submitReport() {
+    const loc  = document.getElementById('rpLoc').value.trim();
+    const type = document.getElementById('rpType').value;
+    const sev  = document.getElementById('rpSev').value;
+    const urg  = document.getElementById('rpUrg').value;
+    const ppl  = document.getElementById('rpPpl').value;
+    if (!loc) { showToast('Please enter a location', 'error'); return; }
+    const score = Math.round(sev * 10 + ppl / 500 + urg * 15);
+    showToast(`Report submitted — ${type} at ${loc} · Score: ${score}`, 'success');
+    document.getElementById('rpLoc').value = '';
+  }
+
+  // =================== VICTIM STATUS ===================
+  function showVictimStatus() { showPage('victim-status'); }
+
+  function simulateAccepted() {
+    const card = document.getElementById('victimStatusCard');
+    card.className = 'status-card status-accepted';
+    card.innerHTML = `
+      <div class="status-icon-ring">✅</div>
+      <div class="status-title">REQUEST ACCEPTED</div>
+      <p class="status-desc">A volunteer has been assigned to you.<br>Help is on the way — stay safe and stay put.</p>
+      <div class="tracker-card">
+        <div class="tracker-title">// Request Tracking</div>
+        <div class="tracker-steps">
+          <div class="tracker-step"><div class="step-dot step-done">✓</div><div class="step-info"><div class="step-label">Request Submitted</div><div class="step-sub">Received at 10:24 AM</div></div></div>
+          <div class="tracker-step"><div class="step-dot step-done">✓</div><div class="step-info"><div class="step-label">Priority Assigned</div><div class="step-sub">Score: 94 — CRITICAL</div></div></div>
+          <div class="tracker-step"><div class="step-dot step-done">✓</div><div class="step-info"><div class="step-label">Volunteer Assigned</div><div class="step-sub">Ravi Kumar — 1.2 km away</div></div></div>
+          <div class="tracker-step"><div class="step-dot step-active">⟳</div><div class="step-info"><div class="step-label">Help Dispatched</div><div class="step-sub">ETA: 8 minutes</div></div></div>
+        </div>
+      </div>`;
+    document.getElementById('volunteerTracker').style.display = 'block';
+  }
+
+  // =================== TASK SYSTEM ===================
+  function acceptTask(idx) {
+    if (tasksDone[idx]) return;
+    tasksDone[idx] = true;
+    const btn = document.getElementById('taskBtn' + idx);
+    if (btn) { btn.textContent = '✓ DONE'; btn.className = 'task-action done'; }
+    const cards = document.querySelectorAll('#volunteer-tasks .task-card');
+    if (cards[idx]) { cards[idx].classList.remove('available'); cards[idx].classList.add('completed'); cards[idx].onclick = null; }
+    if (idx + 1 < 4) {
+      const next = document.getElementById('taskCard' + (idx + 1));
+      if (next) {
+        next.classList.remove('locked'); next.classList.add('available');
+        next.onclick = () => acceptTask(idx + 1);
+        const lb = next.querySelector('.task-action');
+        if (lb) { lb.textContent = 'ACCEPT'; lb.className = 'task-action accept'; lb.id = 'taskBtn' + (idx + 1); lb.onclick = (e) => { e.stopPropagation(); acceptTask(idx + 1); }; }
+      }
+    }
+    showToast('Task accepted! Navigate to the location.', 'success');
+  }
+
+  // =================== NGO HELPERS ===================
+  function toggleHelp(el) { el.classList.toggle('selected'); }
+
+  // =================== ADMIN HELPERS ===================
+  function assignVolunteer(btn) {
+    btn.textContent = '✓ Assigned';
+    btn.style.background = 'rgba(29,158,117,0.25)';
+    btn.style.color = '#5DCAA5';
+    btn.style.borderColor = 'rgba(29,158,117,0.4)';
+    showToast('Volunteer assigned successfully!', 'success');
+  }
+
+  // =================== TOAST ===================
+  function showToast(msg, type = 'success') {
+    const container = document.getElementById('toastContainer');
+    const toast = document.createElement('div');
+    toast.className = `toast ${type}`;
+    toast.innerHTML = `<span>${type === 'success' ? '✓' : '✕'}</span> ${msg}`;
+    container.appendChild(toast);
+    setTimeout(() => toast.remove(), 4000);
+  }
+
+  // =================== CLOSE DROPDOWN ON OUTSIDE CLICK ===================
+  document.addEventListener('click', function(e) {
+    const btn = document.getElementById('roleBtn');
+    const dd  = document.getElementById('roleDropdown');
+    if (!btn.contains(e.target) && !dd.contains(e.target)) {
+      btn.classList.remove('open');
+      dd.classList.remove('open');
+
+    }
+  });
+</script>
+</body>
+</html>

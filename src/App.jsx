@@ -1,0 +1,234 @@
+import React, { useState } from 'react';
+import Topbar from './components/Topbar';
+import Sidebar from './components/Sidebar';
+import MapView from './components/MapView';
+import ReportForm from './components/ReportForm';
+import Chatbot from './components/Chatbot';
+import { ToastContainer, toast } from './components/Toast';
+import { useReports } from './hooks/useReports';
+import styles from './App.module.css';
+import { BrowserRouter, Routes, Route } from 'react-router-dom';
+import HomePage from './pages/HomePage';
+import RegisterPage from './pages/RegisterPage';
+
+function MainApp() {
+  const [activeTab, setActiveTab] = useState('DASHBOARD');
+  const [selectedId, setSelectedId] = useState(null);
+  const { reports, loading, connected, submitReport, resolveReport } = useReports();
+
+  const handleSelect = (id) => {
+    setSelectedId(prev => prev === id ? null : id);
+  };
+
+  const handleSubmit = async (formData) => {
+    const result = await submitReport(formData);
+    if (result?.success) {
+      toast(
+        result.offline
+          ? `Report saved locally — Score: ${result.score}`
+          : `Report submitted — Priority Score: ${result.score}`,
+        'success'
+      );
+    }
+    return result;
+  };
+
+  const handleResolve = (id) => {
+    resolveReport(id);
+    toast('Incident marked as resolved', 'info');
+    setSelectedId(null);
+  };
+
+  return (
+    <div className={styles.app}>
+      <ToastContainer />
+
+      <Topbar
+        activeTab={activeTab}
+        onTabChange={setActiveTab}
+        connected={connected}
+        reportCount={reports.filter(r => r.score >= 130).length}
+      />
+
+      <div className={styles.body}>
+        <Sidebar
+          reports={reports}
+          selectedId={selectedId}
+          onSelect={handleSelect}
+          onResolve={handleResolve}
+        />
+
+        <div className={styles.main}>
+          {(activeTab === 'DASHBOARD' || activeTab === 'MAP') && (
+            <MapView
+              reports={reports}
+              selectedId={selectedId}
+              onSelect={handleSelect}
+            />
+          )}
+
+          {activeTab === 'REPORTS' && (
+            <div className={styles.reportsPage}>
+              <div className={styles.pageTitle}>ALL INCIDENT REPORTS</div>
+              <div className={styles.reportsGrid}>
+                {reports.map((r, i) => (
+                  <ReportCard key={r.id} report={r} rank={i + 1} onResolve={handleResolve} />
+                ))}
+              </div>
+            </div>
+          )}
+
+          {activeTab === 'ANALYTICS' && (
+            <div className={styles.analyticsPage}>
+              <AnalyticsView reports={reports} />
+            </div>
+          )}
+
+          <ReportForm onSubmit={handleSubmit} loading={loading} />
+        </div>
+      </div>
+
+      <Chatbot />
+    </div>
+  );
+}
+
+export default function App() {
+  return (
+    <BrowserRouter>
+      <Routes>
+        <Route path="/" element={<HomePage />} />
+        <Route path="/register" element={<RegisterPage />} />
+        <Route path="/map" element={<MainApp />} />
+      </Routes>
+    </BrowserRouter>
+  );
+}
+
+function ReportCard({ report, rank, onResolve }) {
+  const level = getLevel(report.score);
+  const color = getColor(level);
+
+  return (
+    <div className={styles.reportCard} style={{ '--c': color }}>
+      <div className={styles.cardTop}>
+        <span className={styles.cardRank}>#{rank}</span>
+        <span className={styles.cardType}>{report.type.toUpperCase()}</span>
+        <span className={styles.cardBadge} style={{ color }}>{level}</span>
+        <span className={styles.cardScore} style={{ color }}>SCORE: {report.score}</span>
+      </div>
+      <div className={styles.cardLoc}>{report.location}</div>
+      <div className={styles.cardMeta}>
+        <span>Severity: {report.severity}/10</span>
+        <span>·</span>
+        <span>Affected: {report.peopleAffected.toLocaleString()}</span>
+        <span>·</span>
+        <span>Urgency: {['', 'MODERATE', 'HIGH', 'IMMEDIATE'][report.urgency]}</span>
+      </div>
+      {report.description && (
+        <div className={styles.cardDesc}>{report.description}</div>
+      )}
+      <div className={styles.cardBar}>
+        <div className={styles.cardBarFill} style={{ width: `${Math.min(100, (report.score / 200) * 100)}%`, background: color }} />
+      </div>
+      <button className={styles.cardResolve} onClick={() => onResolve(report.id)}>
+        MARK RESOLVED
+      </button>
+    </div>
+  );
+}
+
+function AnalyticsView({ reports }) {
+  const critical = reports.filter(r => getLevel(r.score) === 'CRITICAL').length;
+  const high = reports.filter(r => getLevel(r.score) === 'HIGH').length;
+  const medium = reports.filter(r => getLevel(r.score) === 'MEDIUM').length;
+  const totalAffected = reports.reduce((s, r) => s + r.peopleAffected, 0);
+  const avgScore = reports.length ? Math.round(reports.reduce((s, r) => s + r.score, 0) / reports.length) : 0;
+  const maxScore = reports.length ? Math.max(...reports.map(r => r.score)) : 0;
+
+  const byType = {};
+  reports.forEach(r => { byType[r.type] = (byType[r.type] || 0) + 1; });
+
+  return (
+    <div className={styles.analytics}>
+      <div className={styles.analyticsTitle}>SYSTEM ANALYTICS</div>
+
+      <div className={styles.analyticsGrid}>
+        <AnalyticCard label="TOTAL INCIDENTS" value={reports.length} color="var(--blue)" />
+        <AnalyticCard label="CRITICAL ACTIVE" value={critical} color="var(--red)" />
+        <AnalyticCard label="TOTAL AFFECTED" value={totalAffected.toLocaleString()} color="var(--purple)" />
+        <AnalyticCard label="AVG PRIORITY SCORE" value={avgScore} color="var(--amber)" />
+        <AnalyticCard label="HIGHEST SCORE" value={maxScore} color="var(--red)" />
+        <AnalyticCard label="RESOLVED TODAY" value={0} color="var(--green)" />
+      </div>
+
+      <div className={styles.chartsRow}>
+        <div className={styles.chartBox}>
+          <div className={styles.chartTitle}>PRIORITY DISTRIBUTION</div>
+          <div className={styles.barChart}>
+            {[['CRITICAL', critical, 'var(--red)'], ['HIGH', high, 'var(--amber)'], ['MEDIUM', medium, 'var(--green)']].map(([label, val, color]) => (
+              <div key={label} className={styles.barRow}>
+                <span className={styles.barLabel}>{label}</span>
+                <div className={styles.barTrack}>
+                  <div className={styles.barFill} style={{ width: `${reports.length ? (val / reports.length) * 100 : 0}%`, background: color }} />
+                </div>
+                <span className={styles.barVal} style={{ color }}>{val}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        <div className={styles.chartBox}>
+          <div className={styles.chartTitle}>INCIDENTS BY TYPE</div>
+          <div className={styles.barChart}>
+            {Object.entries(byType).map(([type, count]) => (
+              <div key={type} className={styles.barRow}>
+                <span className={styles.barLabel}>{type}</span>
+                <div className={styles.barTrack}>
+                  <div className={styles.barFill} style={{ width: `${reports.length ? (count / reports.length) * 100 : 0}%`, background: 'var(--blue)' }} />
+                </div>
+                <span className={styles.barVal} style={{ color: 'var(--blue)' }}>{count}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+
+      <div className={styles.formulaBox}>
+        <div className={styles.chartTitle}>PRIORITY ALGORITHM</div>
+        <div className={styles.formula}>
+          Score = (Severity × 10) + (People Affected ÷ 500) + (Urgency × 15) × Time Decay
+        </div>
+        <div className={styles.formulaNote}>
+          Time decay reduces score by 1% per minute (minimum 50%) so recent incidents are prioritised.
+          CRITICAL ≥ 130 · HIGH ≥ 80 · MEDIUM ≥ 40 · LOW &lt; 40
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function AnalyticCard({ label, value, color }) {
+  return (
+    <div className={styles.analyticCard} style={{ '--c': color }}>
+      <div className={styles.analyticVal}>{value}</div>
+      <div className={styles.analyticLabel}>{label}</div>
+    </div>
+  );
+}
+
+function getLevel(score) {
+  if (score >= 130) return 'CRITICAL';
+  if (score >= 80) return 'HIGH';
+  if (score >= 40) return 'MEDIUM';
+  return 'LOW';
+}
+
+function getColor(level) {
+  switch (level) {
+    case 'CRITICAL': return 'var(--red)';
+    case 'HIGH': return 'var(--amber)';
+    case 'MEDIUM': return 'var(--green)';
+    default: return 'var(--text-muted)';
+  }
+}
