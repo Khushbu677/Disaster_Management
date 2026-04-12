@@ -1007,11 +1007,11 @@
 
   <!-- Ticker bar -->
   <div class="dash-ticker">
-    <div class="ticker-item"><div class="ticker-val" id="tickerActiveIncidents">0</div><div class="ticker-lbl">Active Incidents</div></div>
+    <div class="ticker-item"><div class="ticker-val">1,247</div><div class="ticker-lbl">Active Incidents</div></div>
     <div class="ticker-div"></div>
     <div class="ticker-item"><div class="ticker-val">843</div><div class="ticker-lbl">Volunteers Online</div></div>
     <div class="ticker-div"></div>
-    <div class="ticker-item"><div class="ticker-val" style="color:var(--teal)" id="tickerResolvedToday">0</div><div class="ticker-lbl">Resolved Today</div></div>
+    <div class="ticker-item"><div class="ticker-val" style="color:var(--teal)">389</div><div class="ticker-lbl">Resolved Today</div></div>
     <div class="ticker-div"></div>
     <div class="ticker-item"><div class="ticker-val" style="color:var(--amber)">56</div><div class="ticker-lbl">NGOs Active</div></div>
     <div class="ticker-div"></div>
@@ -1025,15 +1025,15 @@
       <div class="sidebar-section">
         <div class="sidebar-label">System Overview</div>
         <div class="stat-grid">
-          <div class="mini-stat"><div class="mini-stat-val" style="color:var(--red)" id="criticalCount">0</div><div class="mini-stat-lbl">Critical</div></div>
-          <div class="mini-stat"><div class="mini-stat-val" style="color:var(--amber)" id="highCount">0</div><div class="mini-stat-lbl">High</div></div>
-          <div class="mini-stat"><div class="mini-stat-val" style="color:var(--teal)" id="activeCount">0</div><div class="mini-stat-lbl">Active</div></div>
-          <div class="mini-stat"><div class="mini-stat-val" style="color:rgba(255,255,255,0.5)" id="affectedCount">0</div><div class="mini-stat-lbl">Affected</div></div>
+          <div class="mini-stat"><div class="mini-stat-val" style="color:var(--red)">3</div><div class="mini-stat-lbl">Critical</div></div>
+          <div class="mini-stat"><div class="mini-stat-val" style="color:var(--amber)">7</div><div class="mini-stat-lbl">High</div></div>
+          <div class="mini-stat"><div class="mini-stat-val" style="color:var(--teal)">12</div><div class="mini-stat-lbl">Active</div></div>
+          <div class="mini-stat"><div class="mini-stat-val" style="color:rgba(255,255,255,0.5)">43k</div><div class="mini-stat-lbl">Affected</div></div>
         </div>
       </div>
       <div class="sidebar-section" style="flex:1;overflow:hidden;display:flex;flex-direction:column;">
         <div class="sidebar-label">Incident Queue ↓ Priority</div>
-        <div class="incident-list" id="incidentList" style="overflow-y:auto;flex:1;">
+        <div class="incident-list" style="overflow-y:auto;flex:1;">
           <div class="incident-item critical">
             <div style="display:flex;justify-content:space-between;align-items:center;">
               <div class="incident-type">🌊 Flood</div>
@@ -1406,137 +1406,6 @@
   let currentRole = null;
   const mapInstances = {};
   let tasksDone = [false, false, false, false];
-  const BACKEND_URL = 'http://localhost:5002';
-  const INCIDENTS_API = `${BACKEND_URL}/api/dashboard/incidents`;
-  const DEFAULT_CENTER = [28.65, 77.20];
-  let incidentsData = [];
-  let backendConnected = false;
-
-  function calculatePriorityScore(severity, peopleAffected, urgency) {
-    return Math.round(severity * 10 + peopleAffected / 500 + urgency * 15);
-  }
-
-  function getIncidentLevel(score) {
-    if (score >= 130) return 'critical';
-    if (score >= 80) return 'high';
-    return 'medium';
-  }
-
-  function getIncidentColor(level) {
-    if (level === 'critical') return '#E24B4A';
-    if (level === 'high') return '#EF9F27';
-    return '#1D9E75';
-  }
-
-  function getPriorityChipClass(level) {
-    if (level === 'critical') return 'p-critical';
-    if (level === 'high') return 'p-high';
-    return 'p-medium';
-  }
-
-  function formatCompactNumber(value) {
-    return new Intl.NumberFormat('en-US', { notation: 'compact', maximumFractionDigits: 1 }).format(value || 0);
-  }
-
-  function normalizeIncident(incident) {
-    const severity = Number(incident.severity || 5);
-    const peopleAffected = Number(incident.peopleAffected || 0);
-    const urgency = Number(incident.urgency || 1);
-    const score = Number(incident.priorityScore || incident.score || calculatePriorityScore(severity, peopleAffected, urgency));
-    const level = getIncidentLevel(score);
-
-    return {
-      id: incident._id || incident.id || `${incident.type}-${incident.location}-${score}`,
-      lat: Number(incident.coordinates?.lat ?? incident.lat ?? DEFAULT_CENTER[0]),
-      lng: Number(incident.coordinates?.lng ?? incident.lng ?? DEFAULT_CENTER[1]),
-      type: incident.type || 'Other',
-      location: incident.location || incident.loc || 'Unknown location',
-      peopleAffected,
-      severity,
-      urgency,
-      score,
-      level,
-      color: getIncidentColor(level)
-    };
-  }
-
-  async function refreshIncidents(showErrors = false) {
-    try {
-      const response = await fetch(INCIDENTS_API);
-      if (!response.ok) throw new Error('Unable to load incidents');
-      const data = await response.json();
-      incidentsData = Array.isArray(data) ? data.map(normalizeIncident) : [];
-      backendConnected = true;
-    } catch (error) {
-      backendConnected = false;
-      incidentsData = INCIDENTS.map(incident => ({
-        ...incident,
-        id: incident.type + '-' + incident.loc,
-        location: incident.loc,
-        peopleAffected: incident.peopleAffected || 0
-      }));
-      if (showErrors) showToast('Backend not reachable. Showing local data.', 'error');
-    }
-
-    renderDashboardData();
-    refreshVisibleMaps();
-  }
-
-  function renderDashboardData() {
-    const critical = incidentsData.filter(incident => incident.level === 'critical').length;
-    const high = incidentsData.filter(incident => incident.level === 'high').length;
-    const totalAffected = incidentsData.reduce((sum, incident) => sum + (incident.peopleAffected || 0), 0);
-    const activeCount = incidentsData.length;
-
-    const setText = (id, value) => {
-      const element = document.getElementById(id);
-      if (element) element.textContent = value;
-    };
-
-    setText('tickerActiveIncidents', activeCount.toLocaleString());
-    setText('tickerResolvedToday', '0');
-    setText('criticalCount', critical.toString());
-    setText('highCount', high.toString());
-    setText('activeCount', activeCount.toString());
-    setText('affectedCount', formatCompactNumber(totalAffected));
-
-    const zoneTag = document.querySelector('.map-header .map-tag');
-    if (zoneTag) zoneTag.textContent = `${activeCount} Active Zones`;
-
-    const liveTag = document.getElementById('liveTag');
-    if (liveTag) {
-      liveTag.textContent = backendConnected ? 'LIVE DB' : 'LOCAL DATA';
-      liveTag.style.color = backendConnected ? 'var(--red)' : 'var(--amber)';
-      liveTag.style.borderColor = backendConnected ? 'rgba(226,75,74,0.3)' : 'rgba(239,159,39,0.3)';
-    }
-
-    const list = document.getElementById('incidentList');
-    if (!list) return;
-
-    list.innerHTML = incidentsData.map(incident => `
-      <div class="incident-item ${incident.level}">
-        <div style="display:flex;justify-content:space-between;align-items:center;">
-          <div class="incident-type">${incident.type}</div>
-          <span class="priority-chip ${getPriorityChipClass(incident.level)}">${incident.level.toUpperCase()}</span>
-        </div>
-        <div class="incident-loc">${incident.location}</div>
-        <div class="incident-score" style="color:${incident.color}">Score: ${incident.score} · ${(incident.peopleAffected || 0).toLocaleString()} affected</div>
-        <div class="score-bar"><div class="score-fill" style="width:${Math.min(100, incident.score / 2)}%;background:${incident.color}"></div></div>
-      </div>`).join('');
-  }
-
-  function getMapScenesLive() {
-    return {
-      'main-dashboard': [{ id: 'dashMap', incidents: incidentsData }, { id: 'ngoAidMap', incidents: incidentsData.slice(0, 3) }],
-      'volunteer-tasks': [{ id: 'volunteerTaskMap', incidents: incidentsData.slice(0, 4) }],
-      'ngo-help': [{ id: 'ngoAidMap', incidents: incidentsData.slice(0, 3) }],
-      'admin-panel': [{ id: 'adminCoordMap', incidents: incidentsData }]
-    };
-  }
-
-  function refreshVisibleMaps() {
-    document.querySelectorAll('.page.active').forEach(page => ensureMapsForPage(page.id));
-  }
 
   const INCIDENTS = [
     { lat: 28.65, lng: 77.23, type: 'Flood',      loc: 'Zone A — Riverbank',  score: 187, level: 'critical', color: '#E24B4A' },
@@ -1563,7 +1432,6 @@
     document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
     document.getElementById(id).classList.add('active');
     window.scrollTo(0, 0);
-    if (['main-dashboard', 'volunteer-tasks', 'ngo-help', 'admin-panel'].includes(id)) refreshIncidents();
     setTimeout(() => ensureMapsForPage(id), 80);
   }
 
@@ -1750,7 +1618,7 @@
 
   // =================== LEAFLET MAP ===================
   function ensureMapsForPage(pageId) {
-    const scenes = getMapScenesLive()[pageId] || MAP_SCENES[pageId] || [];
+    const scenes = MAP_SCENES[pageId] || [];
     scenes.forEach(scene => initMap(scene.id, scene.incidents));
   }
 
@@ -1775,73 +1643,34 @@
     const mapEl = document.getElementById(mapId);
     if (!mapEl || !window.L) return;
 
-    let map = mapInstances[mapId];
-    if (!map) {
-      map = L.map(mapId, { center: DEFAULT_CENTER, zoom: 11, zoomControl: true });
-      mapInstances[mapId] = map;
-      L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
-    } else {
-      map.eachLayer(layer => {
-        if (!(layer instanceof L.TileLayer)) map.removeLayer(layer);
-      });
-      map.invalidateSize();
+    if (mapInstances[mapId]) {
+      mapInstances[mapId].invalidateSize();
+      return;
     }
+
+    const map = L.map(mapId, { center: [28.65, 77.20], zoom: 11, zoomControl: true });
+    mapInstances[mapId] = map;
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
 
     incidents.forEach(inc => {
       L.marker([inc.lat, inc.lng], { icon: markerIcon(inc) })
         .addTo(map)
         .bindPopup(`<div style="font-family:monospace;font-size:12px;color:white;min-width:180px;">
           <strong style="color:${inc.color}">${inc.type}</strong><br>
-          ${inc.location || inc.loc}<br>
+          ${inc.loc}<br>
           <span style="color:rgba(255,255,255,0.6)">Priority Score: <strong style="color:${inc.color}">${inc.score}</strong></span>
         </div>`);
     });
-    if (incidents.length) {
-      const bounds = L.latLngBounds(incidents.map(inc => [inc.lat, inc.lng]));
-      map.fitBounds(bounds, { padding: [24, 24], maxZoom: 11 });
-    } else {
-      map.setView(DEFAULT_CENTER, 11);
-    }
   }
 
   // =================== REPORT SUBMISSION ===================
-  async function submitReport() {
+  function submitReport() {
     const loc  = document.getElementById('rpLoc').value.trim();
     const type = document.getElementById('rpType').value;
-    const sev  = Number(document.getElementById('rpSev').value);
-    const urg  = Number(document.getElementById('rpUrg').value);
-    const ppl  = Number(document.getElementById('rpPpl').value);
+    const sev  = document.getElementById('rpSev').value;
+    const urg  = document.getElementById('rpUrg').value;
+    const ppl  = document.getElementById('rpPpl').value;
     if (!loc) { showToast('Please enter a location', 'error'); return; }
-    try {
-      const response = await fetch(INCIDENTS_API, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          type,
-          location: loc,
-          severity: sev,
-          peopleAffected: ppl,
-          urgency: urg,
-          description: '',
-          coordinates: {
-            lat: DEFAULT_CENTER[0] + (Math.random() - 0.5) * 0.3,
-            lng: DEFAULT_CENTER[1] + (Math.random() - 0.5) * 0.3
-          }
-        })
-      });
-      const data = await response.json();
-      if (!response.ok) throw new Error(data.error || 'Unable to submit report');
-      showToast(`Report submitted - ${type} at ${loc} - Score: ${data.priorityScore}`, 'success');
-      document.getElementById('rpLoc').value = '';
-      document.getElementById('rpSev').value = '5';
-      document.getElementById('rpUrg').value = '3';
-      document.getElementById('rpPpl').value = '100';
-      await refreshIncidents();
-      return;
-    } catch (error) {
-      showToast(error.message || 'Backend not reachable', 'error');
-      return;
-    }
     const score = Math.round(sev * 10 + ppl / 500 + urg * 15);
     showToast(`Report submitted — ${type} at ${loc} · Score: ${score}`, 'success');
     document.getElementById('rpLoc').value = '';
@@ -1921,7 +1750,6 @@
 
     }
   });
-  refreshIncidents();
 </script>
 </body>
 </html>

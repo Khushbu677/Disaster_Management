@@ -5,7 +5,7 @@ import MapView from './components/MapView';
 import ReportForm from './components/ReportForm';
 import Chatbot from './components/Chatbot';
 import { ToastContainer, toast } from './components/Toast';
-import { useReports } from './hooks/useReports';
+import { useReportsMongo } from './hooks/useReportsMongo';
 import styles from './App.module.css';
 import { BrowserRouter, Routes, Route } from 'react-router-dom';
 import HomePage from './pages/HomePage';
@@ -14,7 +14,7 @@ import RegisterPage from './pages/RegisterPage';
 function MainApp() {
   const [activeTab, setActiveTab] = useState('DASHBOARD');
   const [selectedId, setSelectedId] = useState(null);
-  const { reports, loading, connected, submitReport, resolveReport } = useReports();
+  const { reports, loading, connected, submitReport, resolveReport } = useReportsMongo();
 
   const handleSelect = (id) => {
     setSelectedId(prev => prev === id ? null : id);

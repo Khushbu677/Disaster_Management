@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { calculatePriority, SEED_REPORTS } from '../utils/priority';
 
-const BACKEND_URL = process.env.REACT_APP_BACKEND_URL || 'http://localhost:5000';
+const BACKEND_URL = process.env.REACT_APP_BACKEND_URL || 'http://localhost:5001';
 
 export function useReports() {
   const [reports, setReports] = useState([]);
