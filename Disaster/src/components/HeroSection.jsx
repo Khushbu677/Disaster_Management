@@ -131,9 +131,9 @@ export default function HeroSection({ stats = {}, loading = false }) {
         }}>
           {[
             { icon: '🆘', code: 'SOS', title: 'VICTIM',    desc: 'Emergency help request and live tracking.', to: '/sos' },
-            { icon: '⛑️', code: 'AID', title: 'VOLUNTEER', desc: 'See assignments and response priorities.',   to: '/reports' },
-            { icon: '🏛️', code: 'NGO', title: 'NGO',       desc: 'Offer aid with active relief demand map.',  to: '/reports' },
-            { icon: '🛡️', code: 'ADM', title: 'ADMIN',     desc: 'Coordinate the full live operations map.',  to: '/' },
+            { icon: '⛑️', code: 'AID', title: 'VOLUNTEER', desc: 'See assignments and response priorities.',   to: '/volunteer' },
+            { icon: '🏛️', code: 'NGO', title: 'NGO',       desc: 'Offer aid with active relief demand map.',  to: '/ngo' },
+            { icon: '🛡️', code: 'ADM', title: 'ADMIN',     desc: 'Coordinate the full live operations map.',  to: '/admin' },
           ].map(({ code, title, desc, to }) => (
             <Link
               key={code}
