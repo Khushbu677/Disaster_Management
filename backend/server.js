@@ -16,8 +16,21 @@ const adminRoutes     = require('./routes/admin');
 // ── App Setup ───────────────────────────────────────────────────
 const app    = express();
 const server = http.createServer(app);
+// ── Allowed origins (add production URL here when deploying) ────
+const ALLOWED_ORIGINS = [
+  process.env.FRONTEND_URL || 'http://localhost:3000',
+  'http://localhost:3000',
+  'http://localhost:5173', // Vite default
+  'http://127.0.0.1:3000',
+  'http://127.0.0.1:5173',
+];
+
 const io     = new Server(server, {
-  cors: { origin: '*', methods: ['GET', 'POST', 'PATCH', 'DELETE'] }
+  cors: {
+    origin: ALLOWED_ORIGINS,
+    methods: ['GET', 'POST', 'PATCH', 'DELETE'],
+    credentials: true,
+  }
 });
 
 // Connect MongoDB
@@ -25,9 +38,20 @@ connectDB();
 
 // ── Middleware ───────────────────────────────────────────────────
 const corsOptions = {
-  origin: process.env.FRONTEND_URL || 'http://localhost:3000',
+  origin: (origin, callback) => {
+    // Allow requests with no origin (curl, Postman, mobile apps)
+    if (!origin) return callback(null, true);
+    if (ALLOWED_ORIGINS.includes(origin)) return callback(null, true);
+    callback(new Error(`CORS: origin '${origin}' not allowed`));
+  },
+  methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization'],
+  credentials: true,
+  optionsSuccessStatus: 200, // IE11 fix
 };
 
+// Handle pre-flight for all routes
+app.options('*', cors(corsOptions));
 app.use(cors(corsOptions));
 app.use(express.json());
 
