@@ -24,7 +24,11 @@ const io     = new Server(server, {
 connectDB();
 
 // ── Middleware ───────────────────────────────────────────────────
-app.use(cors());
+const corsOptions = {
+  origin: process.env.FRONTEND_URL || 'http://localhost:3000',
+};
+
+app.use(cors(corsOptions));
 app.use(express.json());
 
 // Inject io into every request so routes can emit events
