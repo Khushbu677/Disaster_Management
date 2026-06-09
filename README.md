@@ -11,7 +11,6 @@
 
 **A full-stack disaster management and emergency response system built for hackathons and real-world use.**
 
-[Features](#-features) • [Tech Stack](#-tech-stack) • [Getting Started](#-getting-started) • [API Reference](#-api-reference) • [Team](#-team)
 
 </div>
 
@@ -150,8 +149,7 @@ npm install
 **3. Configure environment variables**
 
 Create/edit the `.env` file inside `backend/`
-```
-```
+
 
 **4. Set up the React dashboard**
 ```bash
