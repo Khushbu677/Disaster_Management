@@ -39,7 +39,7 @@ const GALLERY = [
     text: 'Boat teams moving families and essential supplies through flooded neighborhoods.',
   },
   {
-    src: 'https://images.unsplash.com/photo-1570612861542-284f4c12e75f?auto=format&fit=crop&w=900&q=80',
+    src: 'https://images.unsplash.com/photo-1575867094974-9e16b6f55360?q=80&w=1170&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D',
     alt: 'Fire disaster response team',
     title: 'Fire Response',
     text: 'Emergency personnel managing evacuation, smoke safety, and on-site support.',
@@ -49,6 +49,12 @@ const GALLERY = [
     alt: 'Earthquake disaster relief operation',
     title: 'Earthquake Relief',
     text: 'Search, rescue, and relief work across damaged urban and community zones.',
+  },
+   {
+    src: 'https://images.unsplash.com/photo-1584515933487-779824d29309?auto=format&fit=crop&w=900&q=80',
+    alt: 'Medical relief camp during disaster',
+    title: 'Medical Relief',
+    text: 'Field medical teams providing emergency care, first aid, and trauma support to survivors.',
   },
 ];
 
